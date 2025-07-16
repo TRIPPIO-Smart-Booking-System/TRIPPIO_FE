@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm' 
+          cache: 'npm'
 
       - name: 📦 Cache node_modules
         uses: actions/cache@v4
@@ -29,20 +29,20 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: 📦 Install dependencies
-        run: npm ci 
+        run: npm ci
 
       - name: 🧹 Run Prettier
-        run: npm run format:check 
-        if: always() 
+        run: npm run format:check
+        if: always()
 
       - name: 🧹 Run ESLint
         run: npm run lint
         if: always()
 
       - name: 🧪 Check TypeScript
-        run: npm run type-check 
+        run: npm run type-check
         if: always()
-        continue-on-error: true 
+        continue-on-error: true
 
       - name: 🧪 Run tests
         run: |
@@ -56,12 +56,12 @@ jobs:
       - name: 🔍 Run npm audit
         run: npm audit --audit-level=moderate
         if: always()
-        continue-on-error: true 
+        continue-on-error: true
 
       - name: 🛠 Build Next.js app
         run: npm run build
         env:
-          NEXT_PUBLIC_API_KEY: ${{ secrets.NEXT_PUBLIC_API_KEY }} 
+          NEXT_PUBLIC_API_KEY: ${{ secrets.NEXT_PUBLIC_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
 
