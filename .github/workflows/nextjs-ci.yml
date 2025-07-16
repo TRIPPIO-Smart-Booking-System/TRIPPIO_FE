@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -19,20 +18,56 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm' 
+
+      - name: 📦 Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: 📦 Install dependencies
-        run: npm install
+        run: npm ci 
+
+      - name: 🧹 Run Prettier
+        run: npm run format:check 
+        if: always() 
 
       - name: 🧹 Run lint
         run: npm run lint
+        if: always()
 
-      - name: 🧪 Run tests (optional)
+      - name: 🧪 Check TypeScript
+        run: npm run type-check 
+        if: always()
+        continue-on-error: true 
+
+      - name: 🧪 Run tests
         run: |
           if [ -f "jest.config.js" ] || [ -f "vitest.config.ts" ]; then
             npm test
           else
             echo "❗️ No test config found, skipping tests."
           fi
+        if: always()
+
+      - name: 🔍 Run npm audit
+        run: npm audit --audit-level=moderate
+        if: always()
+        continue-on-error: true 
 
       - name: 🛠 Build Next.js app
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_KEY: ${{ secrets.NEXT_PUBLIC_API_KEY }} 
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+      - name: 🚀 Deploy to Vercel
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
