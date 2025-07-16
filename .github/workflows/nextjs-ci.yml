@@ -40,7 +40,7 @@ jobs:
         if: always()
 
       - name: 🧪 Check TypeScript
-        run: npm run type-check
+        run: npm run types:check
         if: always()
         continue-on-error: true
 
