@@ -35,12 +35,12 @@ jobs:
         run: npm run format:check
         if: always()
 
-      - name: 🧹 Run ESLint
+      - name: 🧹 Run lint
         run: npm run lint
         if: always()
 
       - name: 🧪 Check TypeScript
-        run: npm run type-check
+        run: npm run types:check
         if: always()
         continue-on-error: true
 
