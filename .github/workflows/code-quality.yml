@@ -1,0 +1,111 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint with reporting
+        run: |
+          npm run lint -- --format json --output-file eslint-report.json || true
+          npm run lint
+
+      - name: Run Prettier check
+        run: npm run format:check
+
+      - name: TypeScript compilation
+        run: npm run types:check
+
+      - name: Check bundle size
+        run: |
+          npm run build
+          npx bundlesize || true
+
+      - name: Analyze bundle
+        run: |
+          npm run build
+          echo "=== Bundle Analysis ==="
+          find .next/static -name "*.js" -exec wc -c {} + | sort -n
+
+      - name: Check for TODO/FIXME comments
+        run: |
+          echo "=== TODO/FIXME Comments ==="
+          grep -r "TODO\|FIXME\|HACK" src/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" || echo "No TODO/FIXME comments found"
+
+      - name: Check for console.log statements
+        run: |
+          echo "=== Console.log Statements ==="
+          grep -r "console\." src/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" || echo "No console statements found"
+
+      - name: Upload ESLint report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: eslint-report
+          path: eslint-report.json
+
+      - name: Comment PR with quality report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            let eslintReport = '';
+            try {
+              if (fs.existsSync('eslint-report.json')) {
+                const eslintData = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
+                const totalErrors = eslintData.reduce((sum, file) => sum + file.errorCount, 0);
+                const totalWarnings = eslintData.reduce((sum, file) => sum + file.warningCount, 0);
+                eslintReport = `
+                ### 📊 ESLint Report
+                - **Errors**: ${totalErrors}
+                - **Warnings**: ${totalWarnings}
+                `;
+              }
+            } catch (error) {
+              eslintReport = '### 📊 ESLint Report\n- Report generation failed';
+            }
+
+            const commentBody = `
+            ## 📋 Code Quality Report
+
+            ${eslintReport}
+
+            ### ✅ Checks Completed
+            - Code linting
+            - Type checking  
+            - Bundle analysis
+            - Code patterns review
+
+            ### 📁 Build Output
+            Check the Actions tab for detailed bundle analysis and reports.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
