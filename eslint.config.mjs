@@ -8,11 +8,9 @@ import prettier from 'eslint-config-prettier';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
-
   {
     ignores: ['node_modules/**', 'dist/**', '.next/**', 'src/generated/**'],
   },
-
 
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -25,11 +23,9 @@ export default defineConfig([
     extends: ['js/recommended'],
   },
 
-
   ...tseslint.configs.recommended,
 
   ...next(),
-
 
   prettier,
 ]);
