@@ -5,7 +5,16 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', '.next/**', 'build/**', 'out/**', 'eslint.config.mjs'],
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      '.next/**',
+      'build/**',
+      'out/**',
+      'eslint.config.mjs',
+      '**/src/generated/*',
+      '**/prisma/generated/*',
+    ],
   },
   ...tseslint.configs.recommended,
   pluginReact.configs.flat.recommended,
