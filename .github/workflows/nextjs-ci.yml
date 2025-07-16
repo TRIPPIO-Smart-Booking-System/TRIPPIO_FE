@@ -35,7 +35,7 @@ jobs:
         run: npm run format:check
         if: always()
 
-      - name: 🧹 Run ESLint
+      - name: 🧹 Run lint
         run: npm run lint
         if: always()
 
