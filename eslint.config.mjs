@@ -1,40 +1,41 @@
-// eslint.config.mjs
+import globals from "globals";
+import tseslint from "typescript-eslint";
+import pluginReact from "eslint-plugin-react";
+import prettier from "eslint-config-prettier";
 
-import js from '@eslint/js';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
-import prettier from 'eslint-config-prettier';
-import { defineConfig } from 'eslint/config';
-
-export default defineConfig([
+export default [
   {
-    ignores: ['node_modules/**', 'dist/**', '.next/**', 'src/generated/**'],
+    ignores: ["node_modules/**", "dist/**", ".next/**", "build/**", "out/**", "eslint.config.mjs"],
   },
+  ...tseslint.configs.recommended,
+  pluginReact.configs.flat.recommended,
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ["**/*.{js,jsx,ts,tsx}"],
     languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        project: './tsconfig.json',
-        sourceType: 'module',
-        ecmaVersion: 'latest',
-      },
       globals: {
         ...globals.browser,
         ...globals.node,
       },
     },
-    plugins: {
-      '@typescript-eslint': tseslint.plugin,
+    settings: {
+      react: {
+        version: "detect",
+      },
     },
     rules: {
-      // Your custom rules (optional)
+      "react/react-in-jsx-scope": "off",
     },
   },
-  // TypeScript recommended config (type-checked)
-  ...tseslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-
-  // Prettier disables conflicting rules
+  {
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        project: "./tsconfig.json", 
+        ecmaVersion: "latest",
+        sourceType: "module",
+      },
+    },
+    ...tseslint.configs.recommendedTypeChecked[0],
+  },
   prettier,
-]);
+];
