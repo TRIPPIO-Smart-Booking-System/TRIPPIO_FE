@@ -3,7 +3,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import next from 'eslint-config-next';
 import prettier from 'eslint-config-prettier';
 import { defineConfig } from 'eslint/config';
 
@@ -11,21 +10,31 @@ export default defineConfig([
   {
     ignores: ['node_modules/**', 'dist/**', '.next/**', 'src/generated/**'],
   },
-
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
-      globals: globals.browser,
+      parser: tseslint.parser,
+      parserOptions: {
+        project: './tsconfig.json',
+        sourceType: 'module',
+        ecmaVersion: 'latest',
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
     },
     plugins: {
-      js,
+      '@typescript-eslint': tseslint.plugin,
     },
-    extends: ['js/recommended'],
+    rules: {
+      // Your custom rules (optional)
+    },
   },
-
+  // TypeScript recommended config (type-checked)
   ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
 
-  ...next(),
-
+  // Prettier disables conflicting rules
   prettier,
 ]);
