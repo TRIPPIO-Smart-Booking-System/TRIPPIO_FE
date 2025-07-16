@@ -9,7 +9,11 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "types:check": "tsc --noEmit",
+    "types:generate": "tsc --emitDeclarationOnly --declaration --allowJs --checkJs --outDir types",
+    "types": "npm run types:check && npm run types:generate",
+    "postinstall": "husky install"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
