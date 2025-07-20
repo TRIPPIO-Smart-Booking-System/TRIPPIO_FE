@@ -1,20 +1,20 @@
 import { cn } from '@/lib/utils';
 import { HTMLAttributes, forwardRef } from 'react';
 
-interface CardProps extends HTMLAttributes<HTMLDivElement> {}
-
-const Card = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => {
-  return (
-    <div
-      className={cn(
-        'bg-card text-card-foreground rounded-lg border border-border shadow-sm',
-        className
-      )}
-      ref={ref}
-      {...props}
-    />
-  );
-});
+const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => {
+    return (
+      <div
+        className={cn(
+          'bg-card text-card-foreground rounded-lg border border-border shadow-sm',
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
 Card.displayName = 'Card';
 
 const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
