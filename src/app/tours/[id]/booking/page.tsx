@@ -3,13 +3,14 @@ import Button from '@/components/ui/Button';
 import { notFound } from 'next/navigation';
 
 interface BookingPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function BookingPage({ params }: BookingPageProps) {
-  const tour = tours.find((tour) => tour.id === params.id);
+export default async function BookingPage({ params }: BookingPageProps) {
+  const { id } = await params;
+  const tour = tours.find((tour) => tour.id === id);
 
   if (!tour) {
     notFound();

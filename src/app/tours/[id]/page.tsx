@@ -4,13 +4,14 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 
 interface TourDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function TourDetailPage({ params }: TourDetailPageProps) {
-  const tour = tours.find((tour) => tour.id === params.id);
+export default async function TourDetailPage({ params }: TourDetailPageProps) {
+  const { id } = await params;
+  const tour = tours.find((tour) => tour.id === id);
 
   if (!tour) {
     notFound();
