@@ -1,0 +1,138 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #e6f7f8;
+}
+
+.card {
+  max-width: 400px;
+  width: 100%;
+
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.field {
+  margin-bottom: 20px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.inputPassword {
+  padding-right: 40px;
+}
+
+.eyeIcon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(5px);
+  color: #888;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.checkboxRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  margin-bottom: 30px;
+}
+
+.rememberLabel {
+  display: flex;
+  align-items: center;
+  color: #333;
+  cursor: pointer;
+}
+
+.forgotBtn {
+  background: none;
+  border: none;
+  color: #fa558f;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.loginBtn {
+  width: 100%;
+  background-color: #586ffb;
+  color: #ffffff;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 25px;
+}
+
+.linkText {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.registerLink {
+  color: #333;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.hr {
+  flex-grow: 1;
+  border-top: 1px solid #eee;
+}
+
+.or {
+  margin: 0 15px;
+  color: #888;
+  font-size: 0.875rem;
+}
+
+.socialRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
