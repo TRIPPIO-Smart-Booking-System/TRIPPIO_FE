@@ -18,8 +18,54 @@ export default function LoginForm() {
       // Mô phỏng gọi API
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Chuyển hướng đến trang chủ sau khi đăng nhập thành công
-      window.location.href = '/';
+      // Lưu trạng thái đăng nhập
+      localStorage.setItem('isLoggedIn', 'true');
+
+      // Trong thực tế, bạn sẽ lấy thông tin người dùng từ API
+      // Đây chỉ là mô phỏng
+      const userProfile = localStorage.getItem('userProfile');
+      if (userProfile) {
+        // Nếu đã có thông tin profile (đã đăng ký trước đó)
+        const profile = JSON.parse(userProfile);
+        // Kiểm tra xem email có khớp không
+        if (profile.email === email) {
+          // Đảm bảo profileName được cập nhật
+          localStorage.setItem('profileName', profile.firstName);
+        } else {
+          // Email không khớp, có thể là người dùng khác đang đăng nhập
+          // Tạo profile mới
+          const newProfile = {
+            firstName: 'Người dùng',
+            lastName: '',
+            email: email,
+            phone: '',
+            city: '',
+            birthDate: '',
+            gender: 'Nam',
+          };
+          localStorage.setItem('userProfile', JSON.stringify(newProfile));
+          localStorage.setItem('profileName', 'Người dùng');
+        }
+      } else {
+        // Chưa có thông tin profile
+        const newProfile = {
+          firstName: 'Người dùng',
+          lastName: '',
+          email: email,
+          phone: '',
+          city: '',
+          birthDate: '',
+          gender: 'Nam',
+        };
+        localStorage.setItem('userProfile', JSON.stringify(newProfile));
+        localStorage.setItem('profileName', 'Người dùng');
+      }
+
+      // Kích hoạt sự kiện storage để Header cập nhật
+      window.dispatchEvent(new Event('storage'));
+
+      // Chuyển hướng đến trang profile sau khi đăng nhập thành công
+      window.location.href = '/profile';
     } catch (error) {
       console.error('Đăng nhập thất bại:', error);
     } finally {

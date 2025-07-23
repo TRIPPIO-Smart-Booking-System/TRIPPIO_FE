@@ -37,6 +37,19 @@ export default function RegisterForm() {
       // Mô phỏng gọi API
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      // Lưu thông tin người dùng vào localStorage
+      const userProfile = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: '',
+        city: '',
+        birthDate: '',
+        gender: 'Nam',
+      };
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+      localStorage.setItem('profileName', formData.firstName);
+
       // Chuyển hướng đến trang đăng nhập sau khi đăng ký thành công
       window.location.href = '/login';
     } catch (error) {
