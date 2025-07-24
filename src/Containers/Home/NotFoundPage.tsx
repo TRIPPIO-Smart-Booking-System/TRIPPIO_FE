@@ -33,7 +33,7 @@ const NotFoundPage: React.FC = () => {
       <h1 style={{ fontSize: '5rem', color: '#586ffb', margin: 0 }}>404</h1>
       <h2 style={{ fontSize: '2rem', color: '#333' }}>Oops! Page not found</h2>
       <p style={{ color: '#666', maxWidth: '400px', marginBottom: '30px' }}>
-        The page you're looking for doesn't exist or has been moved.
+        The page you`re looking for doesn`t exist or has been moved.
       </p>
       <button
         onClick={handleGoToLogin}
