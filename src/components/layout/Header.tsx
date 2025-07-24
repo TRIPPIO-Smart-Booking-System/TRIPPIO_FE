@@ -1,197 +1,157 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import Button from '../ui/Button';
-import { useEffect, useState } from 'react';
+import './Header.css';
 
 export default function Header() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    // Kiểm tra trạng thái đăng nhập
-    const checkLoginStatus = () => {
-      const loginStatus = localStorage.getItem('isLoggedIn');
-      // Lấy tên người dùng từ localStorage (được cập nhật từ trang profile)
-      const profileName = localStorage.getItem('profileName') || '';
-      setIsLoggedIn(loginStatus === 'true');
-      setUserName(profileName);
-    };
-
-    checkLoginStatus();
-    // Lắng nghe sự kiện storage change để cập nhật UI khi đăng nhập/đăng xuất
-    window.addEventListener('storage', checkLoginStatus);
-    return () => window.removeEventListener('storage', checkLoginStatus);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('profileName');
-    setIsLoggedIn(false);
-    setUserName('');
-    window.location.href = '/';
-  };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      const name = localStorage.getItem('profileName') || 'Người dùng';
+      setIsLoggedIn(loggedIn);
+      setUserName(name);
+    };
+
+    checkLoginStatus();
+    window.addEventListener('storage', checkLoginStatus);
+
+    return () => {
+      window.removeEventListener('storage', checkLoginStatus);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('profileName');
+    localStorage.removeItem('userProfile');
+    setIsLoggedIn(false);
+    setUserName('');
+    window.location.href = '/';
+  };
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
-      <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/images/logo.png" alt="Trippio Logo" width={32} height={32} />
-          <span className="text-xl font-bold text-teal-500">Trippio</span>
-        </Link>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link href="/" className="text-gray-800 transition-colors hover:text-teal-500">
-            Trang chủ
+    <header className="header">
+      <div className="header-container">
+        <div className="header-content">
+          {/* Logo - Bên trái với ảnh */}
+          <Link href="/" className="logo">
+            <Image
+              src="/images/logo.png"
+              alt="Trippio Logo"
+              width={120}
+              height={40}
+              className="logo-image"
+              priority
+            />
           </Link>
-          <Link href="/tours" className="text-gray-800 transition-colors hover:text-teal-500">
-            Tours
-          </Link>
-          <Link href="/about" className="text-gray-800 transition-colors hover:text-teal-500">
-            Giới thiệu
-          </Link>
-          <Link href="/contact" className="text-gray-800 transition-colors hover:text-teal-500">
-            Liên hệ
-          </Link>
-        </nav>
 
-        {/* Mobile Menu Button */}
-        <button className="md:hidden text-gray-800" onClick={toggleMenu}>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {isMenuOpen ? (
-              <>
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </>
-            ) : (
-              <>
-                <line x1="4" y1="12" x2="20" y2="12"></line>
-                <line x1="4" y1="6" x2="20" y2="6"></line>
-                <line x1="4" y1="18" x2="20" y2="18"></line>
-              </>
-            )}
-          </svg>
-        </button>
+          {/* Tất cả phần tử bên phải */}
+          <div className="header-right">
+            {/* Desktop Navigation */}
+            <nav className="nav-menu desktop-nav">
+              <a href="#support" className="nav-link">
+                Hỗ trợ
+              </a>
+              <a href="#promotions" className="nav-link">
+                Khuyến mãi
+              </a>
+              <a href="#other" className="nav-link">
+                Khác
+              </a>
+            </nav>
 
-        {/* User Actions */}
-        <div className="hidden md:flex items-center gap-2">
-          {isLoggedIn ? (
-            <>
-              {userName && <span className="text-sm font-medium mr-2">Xin chào, {userName}</span>}
-              <Link href="/profile">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-teal-500 text-teal-500 hover:bg-teal-50"
-                >
-                  Tài khoản
-                </Button>
-              </Link>
-              <Button
-                size="sm"
-                className="bg-teal-500 text-white hover:bg-teal-600"
-                onClick={handleLogout}
-              >
-                Đăng xuất
-              </Button>
-            </>
-          ) : (
-            <>
-              <Link href="/login">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-teal-500 text-teal-500 hover:bg-teal-50"
-                >
-                  Đăng nhập
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button size="sm" className="bg-teal-500 text-white hover:bg-teal-600">
-                  Đăng ký
-                </Button>
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 py-4 px-4">
-          <nav className="flex flex-col space-y-4">
-            <Link href="/" className="text-gray-800 transition-colors hover:text-teal-500">
-              Trang chủ
-            </Link>
-            <Link href="/tours" className="text-gray-800 transition-colors hover:text-teal-500">
-              Tours
-            </Link>
-            <Link href="/about" className="text-gray-800 transition-colors hover:text-teal-500">
-              Giới thiệu
-            </Link>
-            <Link href="/contact" className="text-gray-800 transition-colors hover:text-teal-500">
-              Liên hệ
-            </Link>
-            <div className="pt-4 border-t border-gray-100 flex flex-col space-y-2">
-              {isLoggedIn ? (
-                <>
-                  {userName && <span className="text-sm font-medium">Xin chào, {userName}</span>}
-                  <Link href="/profile" className="w-full">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full border-teal-500 text-teal-500 hover:bg-teal-50"
-                    >
-                      Tài khoản
-                    </Button>
-                  </Link>
-                  <Button
-                    size="sm"
-                    className="w-full bg-teal-500 text-white hover:bg-teal-600"
-                    onClick={handleLogout}
-                  >
-                    Đăng xuất
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Link href="/login" className="w-full">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full border-teal-500 text-teal-500 hover:bg-teal-50"
-                    >
+            {/* Auth Buttons */}
+            <div className="auth-section desktop-auth">
+              <div className="auth-buttons">
+                {isLoggedIn ? (
+                  <div className="user-menu">
+                    <span className="welcome-text">Xin chào, {userName}!</span>
+                    <Link href="/profile" className="profile-link">
+                      Hồ sơ
+                    </Link>
+                    <button onClick={handleLogout} className="logout-btn">
+                      Đăng xuất
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Link href="/login" className="login-btn">
                       Đăng nhập
-                    </Button>
-                  </Link>
-                  <Link href="/register" className="w-full">
-                    <Button size="sm" className="w-full bg-teal-500 text-white hover:bg-teal-600">
+                    </Link>
+                    <Link href="/register" className="register-btn">
                       Đăng ký
-                    </Button>
-                  </Link>
-                </>
-              )}
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
-          </nav>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button className="mobile-menu-btn" onClick={toggleMenu}>
+            <span className={`hamburger ${isMenuOpen ? 'active' : ''}`}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
         </div>
-      )}
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="mobile-menu">
+            <nav className="mobile-nav">
+              <a href="#support" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>
+                Hỗ trợ
+              </a>
+              <a
+                href="#promotions"
+                className="mobile-nav-link"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Khuyến mãi
+              </a>
+              <a href="#other" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>
+                Khác
+              </a>
+            </nav>
+            <div className="mobile-auth">
+              <div className="mobile-auth-buttons">
+                {isLoggedIn ? (
+                  <div className="mobile-user-menu">
+                    <span className="mobile-welcome-text">Xin chào, {userName}!</span>
+                    <Link href="/profile" className="mobile-profile-link">
+                      Hồ sơ
+                    </Link>
+                    <button onClick={handleLogout} className="mobile-logout-btn">
+                      Đăng xuất
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Link href="/login" className="mobile-login-btn">
+                      Đăng nhập
+                    </Link>
+                    <Link href="/register" className="mobile-register-btn">
+                      Đăng ký
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </header>
   );
 }

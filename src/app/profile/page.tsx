@@ -1,199 +1,231 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import './profile.css';
+
+interface UserProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  city: string;
+  birthDate: string;
+  gender: string;
+}
 
 export default function ProfilePage() {
-  const [user, setUser] = useState({
-    firstName: 'Nguyễn',
-    lastName: 'Văn A',
-    email: 'nguyenvana@gmail.com',
-    phone: '0123456789',
-    city: 'TP HCM',
-    birthDate: '30/08/1990',
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<UserProfile>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    city: '',
+    birthDate: '',
     gender: 'Nam',
   });
 
-  // Kiểm tra xem người dùng đã đăng nhập chưa
   useEffect(() => {
-    // Trong thực tế, bạn sẽ kiểm tra trạng thái đăng nhập từ context hoặc API
-    // Đây chỉ là mô phỏng
-    const checkAuth = async () => {
-      // Giả lập kiểm tra xác thực
-      const isLoggedIn = localStorage.getItem('isLoggedIn');
-      if (!isLoggedIn) {
-        window.location.href = '/login';
-      } else {
-        // Lấy thông tin người dùng từ localStorage nếu đã có
-        const savedProfile = localStorage.getItem('userProfile');
-        if (savedProfile) {
-          try {
-            const profileData = JSON.parse(savedProfile);
-            setUser(profileData);
-          } catch (error) {
-            console.error('Lỗi khi phân tích dữ liệu profile:', error);
-          }
-        }
-      }
-    };
-
-    checkAuth();
+    const userProfile = localStorage.getItem('userProfile');
+    if (userProfile) {
+      const profileData = JSON.parse(userProfile);
+      setProfile(profileData);
+      setFormData(profileData);
+    }
   }, []);
 
-  // Hàm xử lý khi người dùng thay đổi thông tin
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { id, value } = e.target;
-    setUser((prev) => ({
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [name]: value,
     }));
   };
 
-  // Hàm xử lý khi người dùng lưu thay đổi
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Lưu tất cả thông tin người dùng vào localStorage
-    localStorage.setItem('profileName', user.firstName);
-    localStorage.setItem('userProfile', JSON.stringify(user));
-    // Kích hoạt sự kiện storage để Header cập nhật
+  const handleSave = () => {
+    localStorage.setItem('userProfile', JSON.stringify(formData));
+    localStorage.setItem('profileName', formData.firstName);
+    setProfile(formData);
+    setIsEditing(false);
     window.dispatchEvent(new Event('storage'));
-    alert('Đã lưu thông tin thành công!');
   };
 
-  return (
-    <div className="container max-w-screen-2xl py-16">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-3xl font-bold">Tài khoản của tôi</h1>
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('profileName');
+    window.dispatchEvent(new Event('storage'));
+    window.location.href = '/';
+  };
 
-        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="md:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Thông tin cá nhân</CardTitle>
-                <CardDescription>Quản lý thông tin cá nhân của bạn</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <nav className="flex flex-col space-y-2">
-                  <Link href="/profile" className="font-medium text-primary">
-                    Thông tin cá nhân
-                  </Link>
-                  <Link
-                    href="/profile/bookings"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Đặt chỗ của tôi
-                  </Link>
-                  <Link
-                    href="/profile/notifications"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Thông báo giá vé
-                  </Link>
-                </nav>
-              </CardContent>
-            </Card>
+  if (!profile) {
+    return (
+      <div className="profile-page">
+        <Header />
+        <div className="profile-container">
+          <div className="loading">Đang tải thông tin...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="profile-page">
+      <Header />
+
+      <div style={{ height: '100px' }}></div>
+
+      <div className="profile-container">
+        <div className="profile-header">
+          <div className="profile-avatar">
+            <div className="avatar-circle">{profile.firstName.charAt(0).toUpperCase()}</div>
+          </div>
+          <h1>Hồ sơ cá nhân</h1>
+          <p>Quản lý thông tin cá nhân của bạn</p>
+        </div>
+
+        <div className="profile-content">
+          <div className="profile-sidebar">
+            <ul className="sidebar-menu">
+              <li className="active">Thông tin cá nhân</li>
+              <li>Đặt chỗ của tôi</li>
+              <li>Danh sách giao dịch</li>
+              <li>Thông báo giá vé</li>
+            </ul>
           </div>
 
-          <div className="md:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cài đặt hồ sơ</CardTitle>
-                <CardDescription>Cập nhật thông tin cá nhân của bạn</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium">
-                        Tên đầy đủ
-                      </label>
-                      <input
-                        id="firstName"
-                        type="text"
-                        value={user.firstName}
-                        onChange={handleChange}
-                        className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="gender" className="block text-sm font-medium">
-                        Giới tính
-                      </label>
-                      <select
-                        id="gender"
-                        value={user.gender}
-                        onChange={handleChange}
-                        className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option>Nam</option>
-                        <option>Nữ</option>
-                      </select>
-                    </div>
-                  </div>
+          <div className="profile-main">
+            <div className="profile-section">
+              <div className="section-header">
+                <h2>Cài đặt hồ sơ</h2>
+                <button className="edit-btn" onClick={() => setIsEditing(!isEditing)}>
+                  {isEditing ? 'Hủy' : 'Chỉnh sửa'}
+                </button>
+              </div>
 
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium">
-                      Email
-                    </label>
+              <div className="profile-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Tên đầy đủ</label>
                     <input
-                      id="email"
+                      type="text"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      placeholder="Nguyễn Văn A"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Giới tính</label>
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    >
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Ngày sinh</label>
+                    <input
+                      type="date"
+                      name="birthDate"
+                      value={formData.birthDate}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Thành phố cư trú</label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      placeholder="TP HCM"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Email</label>
+                    <input
                       type="email"
-                      value={user.email}
-                      onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      placeholder="nguyenvana@gmail.com"
                     />
                   </div>
+                </div>
 
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium">
-                      Số điện thoại
-                    </label>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Số điện thoại</label>
                     <input
-                      id="phone"
                       type="tel"
-                      value={user.phone}
-                      onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      placeholder="0123456789"
                     />
                   </div>
+                </div>
 
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium">
-                      Thành phố cư trú
-                    </label>
-                    <input
-                      id="city"
-                      type="text"
-                      value={user.city}
-                      onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
+                <div className="form-section">
+                  <h3>Tài khoản đã liên kết</h3>
+                  <div className="linked-accounts">
+                    <div className="account-item">
+                      <span className="account-icon">📘</span>
+                      <span>Facebook</span>
+                      <button className="link-btn">Liên kết</button>
+                    </div>
+                    <div className="account-item">
+                      <span className="account-icon">🔍</span>
+                      <span>Google</span>
+                      <button className="link-btn">Liên kết</button>
+                    </div>
                   </div>
+                </div>
 
-                  <div>
-                    <label htmlFor="birthDate" className="block text-sm font-medium">
-                      Ngày sinh
-                    </label>
-                    <input
-                      id="birthDate"
-                      type="text"
-                      value={user.birthDate}
-                      onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
+                {isEditing && (
+                  <div className="form-actions">
+                    <button className="save-btn" onClick={handleSave}>
+                      Lưu thay đổi
+                    </button>
                   </div>
+                )}
 
-                  <div className="flex justify-end">
-                    <Button type="submit">Lưu thay đổi</Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+                <div className="logout-section">
+                  <button className="logout-btn" onClick={handleLogout}>
+                    Đăng xuất
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

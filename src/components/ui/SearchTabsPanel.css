@@ -1,0 +1,220 @@
+.search-tabs-panel {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+/* Container wrapper để căn giữa hoàn hảo */
+.search-tabs-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 40px 20px;
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  min-height: 44px;
+}
+
+.tab-button:hover {
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+}
+
+.tab-button.active {
+  background: #14b8a6;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+.tab-label {
+  white-space: nowrap;
+}
+
+/* Search Form */
+.search-form {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+}
+
+.search-fields {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.search-field label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.search-field input,
+.search-field select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #374151;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.search-field input:focus,
+.search-field select:focus {
+  outline: none;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+.search-field input::placeholder {
+  color: #9ca3af;
+}
+
+.search-field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* Search Button */
+.search-btn {
+  background: #1f2937;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  min-width: 120px;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+.search-btn:hover {
+  background: #111827;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.search-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .search-tabs-container {
+    padding: 20px;
+  }
+
+  .search-tabs-panel {
+    max-width: 95%;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-tabs-container {
+    padding: 16px;
+  }
+
+  .search-tabs-panel {
+    padding: 16px;
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .tab-button {
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  .tab-icon {
+    font-size: 14px;
+  }
+
+  .search-form {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .search-fields {
+    flex-direction: column;
+  }
+
+  .search-btn {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-tabs-container {
+    padding: 12px;
+  }
+
+  .tab-navigation {
+    flex-wrap: wrap;
+  }
+
+  .tab-button {
+    flex: 1;
+    min-width: calc(50% - 2px);
+  }
+}
