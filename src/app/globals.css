@@ -40,8 +40,13 @@ a {
   font-weight: var(--font-weight-bold);
   text-align: center;
   margin-bottom: var(--spacing-2xl);
+  margin-top: 4rem; /* Thêm margin-top để tạo khoảng cách */
   color: var(--text-primary);
   position: relative;
+}
+
+.section-title::after {
+  display: none; /* Đã có sẵn để ẩn đường thẳng */
 }
 
 .section-title::after {

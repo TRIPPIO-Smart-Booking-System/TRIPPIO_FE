@@ -1,5 +1,8 @@
 .search-tabs-panel {
-  background: white;
+  background: linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
