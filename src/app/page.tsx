@@ -389,55 +389,252 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Featured Tours */}
+      {/* Popular Destinations Section */}
+      <section className="popular-destinations-vietnam">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">Điểm đến phổ biến nhất Việt Nam</h2>
+          </div>
+          <div className="destinations-vietnam-grid">
+            <div className="destination-vietnam-card">
+              <img src="/images/danang.jpg" alt="Đà Nẵng" />
+              <div className="destination-vietnam-info">
+                <h3>Đà Nẵng</h3>
+                <span className="destination-arrow">→</span>
+              </div>
+            </div>
+            <div className="destination-vietnam-card">
+              <img src="/images/phuquoc.jpg" alt="Phú Quốc" />
+              <div className="destination-vietnam-info">
+                <h3>Phú Quốc</h3>
+                <span className="destination-arrow">→</span>
+              </div>
+            </div>
+            <div className="destination-vietnam-card">
+              <img src="/images/hanoi.jpg" alt="Hà Nội" />
+              <div className="destination-vietnam-info">
+                <h3>Hà Nội</h3>
+                <span className="destination-arrow">→</span>
+              </div>
+            </div>
+            <div className="destination-vietnam-card">
+              <img src="/images/dalat.jpg" alt="Đà Lạt" />
+              <div className="destination-vietnam-info">
+                <h3>Đà Lạt</h3>
+                <span className="destination-arrow">→</span>
+              </div>
+            </div>
+            <div className="destination-vietnam-card">
+              <img src="/images/phuquy.jpg" alt="Phú Quý" />
+              <div className="destination-vietnam-info">
+                <h3>Phú Quý</h3>
+                <span className="destination-arrow">→</span>
+              </div>
+            </div>
+            <div className="destination-vietnam-card">
+              <img src="/images/nhatrang.jpg" alt="Nha Trang" />
+              <div className="destination-vietnam-info">
+                <h3>Nha Trang</h3>
+                <span className="destination-arrow">→</span>
+              </div>
+            </div>
+            <div className="destination-vietnam-card">
+              <img src="/images/nghean.jpg" alt="Nghệ An" />
+              <div className="destination-vietnam-info">
+                <h3>Nghệ An</h3>
+                <span className="destination-arrow">→</span>
+              </div>
+            </div>
+            <div className="destination-vietnam-card show-all">
+              <div className="show-all-content">
+                <span className="show-all-text">Tất cả các điểm đến</span>
+                <span className="show-all-arrow">→</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* Featured Tours Section */}
       <section className="featured-tours">
         <div className="container">
-          <h2 className="section-title">Tour nổi bật</h2>
+          <div className="section-header">
+            <h2 className="section-title">Các tour du lịch nổi bật của chúng tôi</h2>
+            <p className="section-subtitle">Điểm đến yêu thích dựa trên đánh giá của khách hàng</p>
+          </div>
+          <div className="tour-filters">
+            <select className="filter-select">
+              <option>Khoảng thời gian</option>
+              <option>1-3 ngày</option>
+              <option>4-7 ngày</option>
+              <option>Trên 7 ngày</option>
+            </select>
+            <select className="filter-select">
+              <option>Đánh giá / Xếp hạng</option>
+              <option>5 sao</option>
+              <option>4 sao trở lên</option>
+              <option>3 sao trở lên</option>
+            </select>
+            <select className="filter-select">
+              <option>Giá</option>
+              <option>Dưới 5 triệu</option>
+              <option>5-10 triệu</option>
+              <option>Trên 10 triệu</option>
+            </select>
+          </div>
           <div className="tours-grid">
-            {tours.slice(0, 6).map((tour) => (
-              <div key={tour.id} className="tour-card">
-                <img src={tour.image} alt={tour.title} />
-                <div className="tour-info">
-                  <h3>{tour.title}</h3>
-                  <p className="tour-location">{tour.location}</p>
-                  <p className="tour-duration">{tour.duration}</p>
-                  <div className="tour-footer">
-                    <span className="tour-price">{tour.price}</span>
-                    <button className="book-btn" onClick={() => handleBookNow(tour.id)}>
-                      Đặt ngay
-                    </button>
-                  </div>
+            <div className="tour-card">
+              <div className="tour-badge top-rated">Top Rated</div>
+              <div className="tour-image">
+                <img src="/images/danang-tour.jpg" alt="Cầu vàng Đà Nẵng" />
+                <button className="favorite-btn">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      stroke="#666"
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="tour-info">
+                <h3>Cầu vàng Đà Nẵng</h3>
+                <div className="tour-details">
+                  <span className="duration">2 ngày 3 đêm</span>
+                  <span className="capacity">4-6 người</span>
+                </div>
+                <div className="tour-price">
+                  <span className="price">VND 7.000.000</span>
+                  <span className="price-unit">/ người</span>
+                  <button className="book-btn">Đặt Ngay</button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* App Promotion */}
-      <section className="app-promotion">
-        <div className="container">
-          <div className="app-content">
-            <div className="app-text">
-              <h2>Tải ứng dụng Trippio</h2>
-              <p>Trải nghiệm đặt tour du lịch dễ dàng hơn với ứng dụng di động của chúng tôi</p>
-              <div className="app-buttons">
-                <Link href="#" className="app-store-btn">
-                  <img src="/images/app-store.png" alt="Download on App Store" />
-                </Link>
-                <Link href="#" className="google-play-btn">
-                  <img src="/images/google-play.png" alt="Get it on Google Play" />
-                </Link>
+            </div>
+            <div className="tour-card">
+              <div className="tour-badge best-sale">Best Sale</div>
+              <div className="tour-image">
+                <img src="/images/nhatrang-tour.jpg" alt="Thành Phố Đêm Nha Trang" />
+                <button className="favorite-btn">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      stroke="#666"
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="tour-info">
+                <h3>Thành Phố Đêm Nha Trang</h3>
+                <div className="tour-details">
+                  <span className="duration">3 ngày 3 đêm</span>
+                  <span className="capacity">4-6 người</span>
+                </div>
+                <div className="tour-price">
+                  <span className="price">VND 7.000.000</span>
+                  <span className="price-unit">/ người</span>
+                  <button className="book-btn">Đặt Ngay</button>
+                </div>
               </div>
             </div>
-            <div className="app-image">
-              <img src="/images/app-mockup.png" alt="Trippio App" />
+            <div className="tour-card">
+              <div className="tour-badge discount">25% Off</div>
+              <div className="tour-image">
+                <img src="/images/phuquoc-tour.jpg" alt="Phú Quốc" />
+                <button className="favorite-btn">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      stroke="#666"
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="tour-info">
+                <h3>Phú Quốc</h3>
+                <div className="tour-details">
+                  <span className="duration">7 ngày 6 đêm</span>
+                  <span className="capacity">4-6 người</span>
+                </div>
+                <div className="tour-price">
+                  <span className="price">VND 7.000.000</span>
+                  <span className="price-unit">/ người</span>
+                  <button className="book-btn">Đặt Ngay</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Why Choose Us Section */}
+      <section className="why-choose-us">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">Tại sao nên đi du lịch cùng chúng tôi?</h2>
+            <p className="section-subtitle">Nền tảng đặt phòng tốt nhất mà bạn có thể tin tướng</p>
+          </div>
+          <div className="benefits-grid">
+            <div className="benefit-card">
+              <div className="benefit-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <circle cx="24" cy="24" r="20" fill="#FFF3CD" stroke="#F59E0B" strokeWidth="2" />
+                  <path d="M24 16v8l6 6" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <h3>Đảm bảo an ninh</h3>
+              <p>
+                Thể hiện cam kết bảo mật dữ liệu người dùng thông qua mã hóa và các biện pháp bảo
+                mật toàn diện
+              </p>
+              <button className="learn-more-btn">Tìm hiểu thêm →</button>
+            </div>
+            <div className="benefit-card">
+              <div className="benefit-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <circle cx="24" cy="24" r="20" fill="#FEE2E2" stroke="#EF4444" strokeWidth="2" />
+                  <path
+                    d="M16 24l6 6 12-12"
+                    stroke="#EF4444"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <h3>Đảm bảo an ninh</h3>
+              <p>
+                Thể hiện cam kết bảo mật dữ liệu người dùng thông qua mã hóa và các biện pháp bảo
+                mật toàn diện
+              </p>
+              <button className="learn-more-btn">Tìm hiểu thêm →</button>
+            </div>
+            <div className="benefit-card">
+              <div className="benefit-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <circle cx="24" cy="24" r="20" fill="#DBEAFE" stroke="#3B82F6" strokeWidth="2" />
+                  <path
+                    d="M20 28l4 4 8-8"
+                    stroke="#3B82F6"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <h3>Đảm bảo an ninh</h3>
+              <p>
+                Thể hiện cam kết bảo mật dữ liệu người dùng thông qua mã hóa và các biện pháp bảo
+                mật toàn diện
+              </p>
+              <button className="learn-more-btn">Tìm hiểu thêm →</button>
+            </div>
+          </div>
+        </div>
+      </section>
       <Footer />
     </div>
   );
