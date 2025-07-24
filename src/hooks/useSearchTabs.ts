@@ -8,7 +8,7 @@ interface Tab {
   icon?: string;
 }
 
-interface SearchData {
+export interface SearchData {
   // Common fields
   destination: string;
   checkin: string;
@@ -87,9 +87,12 @@ export function useSearchTabs({ tabs, defaultActiveTab, onSearch }: UseSearchTab
     setActiveTab(tabId);
   }, []);
 
-  const updateSearchField = useCallback((field: keyof SearchData, value: any) => {
-    setSearchData((prev) => ({ ...prev, [field]: value }));
-  }, []);
+  const updateSearchField = useCallback(
+    (field: keyof SearchData, value: SearchData[keyof SearchData]) => {
+      setSearchData((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {

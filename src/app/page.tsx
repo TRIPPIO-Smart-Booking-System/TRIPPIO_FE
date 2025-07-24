@@ -1,10 +1,9 @@
 'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import SearchTabsPanel from '@/components/ui/SearchTabsPanel';
+import { SearchData } from '@/hooks/useSearchTabs';
 import { tours } from '@/data/tours';
 import './homepage.css';
 
@@ -17,7 +16,7 @@ export default function Home() {
     { id: 'activities', label: 'Hoạt động', icon: '🎯' },
   ];
 
-  const handleSearch = (searchData: any) => {
+  const handleSearch = (searchData: SearchData & { type: string }) => {
     console.log('Tìm kiếm:', searchData);
     // Xử lý tìm kiếm theo từng loại dịch vụ
     switch (searchData.type) {
@@ -30,7 +29,9 @@ export default function Home() {
           guests: searchData.guests?.toString() || '2',
           rooms: searchData.rooms?.toString() || '1',
         });
-        window.location.href = `/hotels/search?${hotelParams.toString()}`;
+        if (typeof window !== 'undefined') {
+          window.location.href = `/hotels/search?${hotelParams.toString()}`;
+        }
         break;
       case 'flights':
         // Chuyển hướng đến trang tìm kiếm vé máy bay với query params
@@ -42,19 +43,23 @@ export default function Home() {
           passengers: searchData.passengers?.toString() || '1',
           tripType: searchData.tripType || 'roundtrip',
         });
-        window.location.href = `/flights/search?${flightParams.toString()}`;
+        if (typeof window !== 'undefined') {
+          window.location.href = `/flights/search?${flightParams.toString()}`;
+        }
         break;
       case 'car-rental':
         // Chuyển hướng đến trang tìm kiếm xe cho thuê với query params
         const carParams = new URLSearchParams({
-          pickupLocation: searchData.pickupLocation || '',
-          dropoffLocation: searchData.dropoffLocation || '',
-          pickupDate: searchData.pickupDate || '',
-          dropoffDate: searchData.dropoffDate || '',
-          pickupTime: searchData.pickupTime || '',
-          dropoffTime: searchData.dropoffTime || '',
+          pickupLocation: searchData.carPickupLocation || '',
+          dropoffLocation: searchData.carDropoffLocation || '',
+          pickupDate: searchData.carPickupDate || '',
+          dropoffDate: searchData.carDropoffDate || '',
+          pickupTime: searchData.carPickupTime || '',
+          dropoffTime: searchData.carDropoffTime || '',
         });
-        window.location.href = `/cars/search?${carParams.toString()}`;
+        if (typeof window !== 'undefined') {
+          window.location.href = `/cars/search?${carParams.toString()}`;
+        }
         break;
       case 'airport-transfer':
         console.log('Tìm kiếm đưa đón sân bay:', searchData);
@@ -68,18 +73,24 @@ export default function Home() {
           activityType: searchData.activityType || '',
           participants: searchData.participants?.toString() || '2',
         });
-        window.location.href = `/activities/search?${activityParams.toString()}`;
+        if (typeof window !== 'undefined') {
+          window.location.href = `/activities/search?${activityParams.toString()}`;
+        }
         break;
     }
   };
 
   const handleBookNow = (tourId: string) => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    if (!isLoggedIn) {
-      alert('Vui lòng đăng nhập để đặt tour!');
-      window.location.href = '/login';
-    } else {
-      console.log('Đặt tour:', tourId);
+    if (typeof window !== 'undefined') {
+      const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+      if (!isLoggedIn) {
+        alert('Vui lòng đăng nhập để đặt tour!');
+        window.location.href = '/login';
+      } else {
+        console.log('Đặt tour:', tourId);
+        // Redirect to tour booking page
+        window.location.href = `/tours/${tourId}/booking`;
+      }
     }
   };
 
@@ -145,13 +156,13 @@ export default function Home() {
           <div className="tours-grid">
             {tours.slice(0, 6).map((tour) => (
               <div key={tour.id} className="tour-card">
-                <img src={tour.image} alt={tour.title} />
+                <img src={tour.imageUrl} alt={tour.title} />
                 <div className="tour-info">
                   <h3>{tour.title}</h3>
-                  <p className="tour-location">{tour.location}</p>
+                  <p className="tour-location">{tour.destination}</p>
                   <p className="tour-duration">{tour.duration}</p>
                   <div className="tour-footer">
-                    <span className="tour-price">{tour.price}</span>
+                    <span className="tour-price">{tour.price.toLocaleString('vi-VN')}đ</span>
                     <button className="book-btn" onClick={() => handleBookNow(tour.id)}>
                       Đặt ngay
                     </button>
@@ -172,15 +183,17 @@ export default function Home() {
               <p>Trải nghiệm đặt tour du lịch dễ dàng hơn với ứng dụng di động của chúng tôi</p>
               <div className="app-buttons">
                 <Link href="#" className="app-store-btn">
-                  <img src="/images/app-store.png" alt="Download on App Store" />
+                  App Store
                 </Link>
                 <Link href="#" className="google-play-btn">
-                  <img src="/images/google-play.png" alt="Get it on Google Play" />
+                  Google Play
                 </Link>
               </div>
             </div>
             <div className="app-image">
-              <img src="/images/app-mockup.png" alt="Trippio App" />
+              <div className="placeholder-image">
+                <p>📱 App Mockup</p>
+              </div>
             </div>
           </div>
         </div>

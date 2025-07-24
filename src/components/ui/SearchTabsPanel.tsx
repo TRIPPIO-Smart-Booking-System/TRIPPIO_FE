@@ -9,10 +9,12 @@ interface Tab {
   icon?: string;
 }
 
+import type { SearchData } from '@/hooks/useSearchTabs';
+
 interface SearchTabsPanelProps {
   tabs: Tab[];
   defaultActiveTab?: string;
-  onSearch?: (data: any) => void;
+  onSearch?: (data: SearchData & { type: string }) => void;
 }
 
 export default function SearchTabsPanel({

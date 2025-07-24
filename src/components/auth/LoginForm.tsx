@@ -53,7 +53,13 @@ export default function LoginForm() {
       }
 
       localStorage.setItem('userProfile', JSON.stringify(userProfile));
-      localStorage.setItem('profileName', userProfile.name);
+      if (userProfile) {
+        const profileObj = typeof userProfile === 'string' ? JSON.parse(userProfile) : userProfile;
+        localStorage.setItem(
+          'profileName',
+          profileObj.name || profileObj.firstName || 'Người dùng'
+        );
+      }
       window.dispatchEvent(new Event('storage'));
 
       // Redirect về trang chủ thay vì trang profile
