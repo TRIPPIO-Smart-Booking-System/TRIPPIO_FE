@@ -6,7 +6,14 @@ import React, { useState, useEffect } from 'react';
 import { postJSON } from '@/lib/http';
 
 type VerifyPayload = { email: string; otp: string };
-
+// ✅ Helper: lấy message an toàn từ unknown
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err && 'message' in err) {
+    return String((err as { message?: unknown }).message ?? 'Đã xảy ra lỗi');
+  }
+  return 'Đã xảy ra lỗi không xác định';
+}
 export default function VerifyOtpPage() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -29,13 +36,12 @@ export default function VerifyOtpPage() {
     setMsg(null);
     setLoading(true);
     try {
-      await postJSON('/api/admin/auth/verify-email', { email, otp } as VerifyPayload);
+      await postJSON<void>('/api/admin/auth/verify-email', { email, otp } as VerifyPayload);
       setMsg('Xác minh thành công! Đang chuyển vào trang chủ…');
-      // Sau khi verify thành công, backend thường kích hoạt account.
-      // Nếu cần login lại để lấy token, bạn có thể chuyển sang /login.
       setTimeout(() => router.push('/'), 600);
-    } catch (e: any) {
-      setErr(e?.message || 'OTP không hợp lệ');
+    } catch (e: unknown) {
+      // ⬅️ đổi any -> unknown
+      setErr(getErrorMessage(e) || 'OTP không hợp lệ');
     } finally {
       setLoading(false);
     }
@@ -46,15 +52,15 @@ export default function VerifyOtpPage() {
     setMsg(null);
     setResendLoading(true);
     try {
-      await postJSON('/api/admin/auth/resend-otp', { email });
+      await postJSON<void>('/api/admin/auth/resend-otp', { email });
       setMsg('Đã gửi lại OTP vào email của bạn.');
-    } catch (e: any) {
-      setErr(e?.message || 'Không thể gửi lại OTP');
+    } catch (e: unknown) {
+      // ⬅️ đổi any -> unknown
+      setErr(getErrorMessage(e) || 'Không thể gửi lại OTP');
     } finally {
       setResendLoading(false);
     }
   }
-
   return (
     <div className="container max-w-screen-2xl py-16">
       <div className="mx-auto max-w-md">

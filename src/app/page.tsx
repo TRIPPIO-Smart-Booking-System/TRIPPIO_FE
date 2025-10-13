@@ -1,22 +1,11 @@
-import Hero from '@/components/home/Hero';
-import FeaturedTours from '@/components/home/FeaturedTours';
-import WhyChooseUs from '@/components/home/WhyChooseUs';
-import Newsletter from '@/components/home/Newsletter';
-import DreamDestinations from '@/components/home/DreamDestinations';
-import PopularDestinations from '@/components/home/PopularDestinations';
-import FeaturedTopTours from '@/components/home/FeaturedTopTours';
+// app/page.tsx
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-export default function Home() {
-  return (
-    <div className="flex flex-col">
-      <Hero />
+export default async function Home() {
+  const jar = await cookies(); // ✅ có await
+  const token = jar.get('trippio_session')?.value;
 
-      <FeaturedTours />
-      <DreamDestinations />
-      <PopularDestinations />
-      <FeaturedTopTours />
-      <WhyChooseUs />
-      <Newsletter />
-    </div>
-  );
+  if (token) redirect('/homepage'); // đã đăng nhập
+  redirect('/login'); // chưa đăng nhập
 }

@@ -6,8 +6,11 @@ import { useState } from 'react';
 type Props = { images: string[] };
 
 export default function HotelGallery({ images }: Props) {
-  const hasThumbs = (images?.length ?? 0) > 1;
-  const main = images?.[0] ?? '';
+  const safeImages = Array.isArray(images) ? images.filter(Boolean) : [];
+  const hasAny = safeImages.length > 0;
+  const hasThumbs = safeImages.length > 1;
+  const main = hasAny ? safeImages[0] : '/img/placeholder.jpg';
+
   const [isOpen, setIsOpen] = useState(false);
   const [active, setActive] = useState(main);
 
@@ -26,7 +29,7 @@ export default function HotelGallery({ images }: Props) {
 
       {hasThumbs && (
         <div className="mt-3 grid grid-cols-3 gap-3">
-          {images.slice(0, 6).map((src, i) => (
+          {safeImages.slice(0, 6).map((src, i) => (
             <button key={i} className="overflow-hidden rounded-xl" onClick={() => open(src)}>
               <div className="relative aspect-[4/3]">
                 <Image src={src} alt={`thumb ${i + 1}`} fill className="object-cover" />

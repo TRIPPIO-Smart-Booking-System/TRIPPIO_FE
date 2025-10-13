@@ -4,7 +4,7 @@ import { useId, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { Hotel, Plane, CarTaxiFront, Car, PartyPopper } from 'lucide-react';
-
+import type { LucideIcon } from 'lucide-react';
 // -------------------- Types --------------------
 type TabKey = 'hotel' | 'flight' | 'transfer' | 'car' | 'activity';
 type Item = { key: TabKey; label: string };
@@ -27,14 +27,13 @@ const DEFAULT_ITEMS: Item[] = [
 ];
 
 // -------------------- Helpers --------------------
-const iconOf: Record<TabKey, React.ComponentType<any>> = {
+const iconOf: Record<TabKey, LucideIcon> = {
   hotel: Hotel,
   flight: Plane,
   transfer: CarTaxiFront,
   car: Car,
   activity: PartyPopper,
 };
-
 // -------------------- Component --------------------
 export default function SecondaryHeaderTabs({
   items = DEFAULT_ITEMS,

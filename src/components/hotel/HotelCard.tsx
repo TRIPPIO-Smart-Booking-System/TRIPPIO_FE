@@ -1,132 +1,236 @@
 'use client';
 
 import Link from 'next/link';
-import type { Hotel } from '@/data/hotel.types';
-import Gallery from '../tour/Gallery';
+import { useEffect, useMemo, useState } from 'react';
+import { ApiHotel } from '@/data/hotel.types';
+import { BedDouble, Users2, DoorOpen, Star } from 'lucide-react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
+
+type ApiRoom = {
+  id: string;
+  hotelId: string;
+  roomType: string;
+  pricePerNight: number;
+  capacity: number;
+  availableRooms: number;
+  dateCreated: string;
+  modifiedDate: string | null;
+};
 
 type Props = {
-  hotel: Hotel;
-  price?: number;
-  oldPrice?: number;
-  rating?: number;
-  reviews?: number;
-  rankNote?: string;
-  promoBadge?: string;
-  taxNote?: string;
-  points?: number;
+  hotel: ApiHotel;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  roomsNeeded: number;
 };
 
 const VND = (n: number) =>
-  n.toLocaleString('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  });
+  n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+
+function calcNights(ci: string, co: string) {
+  const a = new Date(ci);
+  const b = new Date(co);
+  const diff = Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(diff, 1);
+}
 
 export default function HotelCard({
   hotel,
-  price = 17_876_147,
-  oldPrice = 23_834_863,
-  rating = hotel.rating ?? 9.4,
-  reviews = 681,
-  rankNote = 'Hạng 7 trong số Khách sạn 5 sao',
-  promoBadge = 'Gần biển',
-  taxNote = 'Bao gồm thuế và phí',
-  points = 62567,
+  checkIn,
+  checkOut,
+  adults,
+  children,
+  roomsNeeded,
 }: Props) {
-  const main = hotel.images?.[0] ?? '/img/placeholder.jpg';
-  const thumbs = (hotel.images ?? []).slice(1, 4);
+  const totalGuests = adults + children;
+  const nights = calcNights(checkIn, checkOut);
+
+  const [rooms, setRooms] = useState<ApiRoom[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [roomErr, setRoomErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      try {
+        setLoadingRooms(true);
+        setRoomErr(null);
+        const res = await fetch(`${API_BASE}/api/Room`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: unknown = await res.json();
+        const all = (Array.isArray(data) ? data : []) as ApiRoom[];
+        const list = all
+          .filter((r) => r.hotelId === hotel.id)
+          .sort((a, b) => (a.pricePerNight ?? 0) - (b.pricePerNight ?? 0));
+        if (!canceled) setRooms(list);
+      } catch (e) {
+        if (!canceled) setRoomErr(e instanceof Error ? e.message : 'Fetch rooms failed');
+      } finally {
+        if (!canceled) setLoadingRooms(false);
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [hotel.id]);
+
+  // Giá/đêm rẻ nhất thoả điều kiện khách/phòng
+  const nightly = useMemo(() => {
+    let min = Number.POSITIVE_INFINITY;
+    for (const r of rooms) {
+      const okCap = (r.capacity ?? 0) >= totalGuests;
+      const okStock = (r.availableRooms ?? 0) >= roomsNeeded;
+      if (okCap && okStock && typeof r.pricePerNight === 'number') {
+        min = Math.min(min, r.pricePerNight);
+      }
+    }
+    return Number.isFinite(min) ? min : null;
+  }, [rooms, totalGuests, roomsNeeded]);
+
+  const totalRoomsLeft = useMemo(
+    () => rooms.reduce((s, r) => s + (r.availableRooms || 0), 0),
+    [rooms]
+  );
+
+  // chỉ “nhá” tối đa 3 phòng rẻ nhất
+  const teaserRooms = useMemo(() => rooms.slice(0, 3), [rooms]);
 
   return (
-    <article className="flex w-full overflow-hidden rounded-xl border bg-white shadow hover:shadow-lg transition">
-      {/* LEFT: Gallery */}
-      <div className="w-[30%] border-r">
-        <Gallery main={main} thumbs={thumbs} />
+    <article className="flex w-full overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm transition hover:shadow-md">
+      {/* LEFT: ảnh */}
+      <div className="w-[30%]">
+        <div className="relative h-full min-h-[220px] w-full overflow-hidden">
+          <img
+            src="/img/placeholder.jpg"
+            alt={hotel.name}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        </div>
       </div>
 
-      {/* MIDDLE: Info */}
-      <div className="flex flex-col flex-1 p-4">
-        {/* Title + rating */}
-        <div className="flex justify-between items-start">
-          <Link href={`/hotel/${hotel.id}`} className="block max-w-[70%]">
-            <h2 className="text-lg font-semibold leading-snug hover:underline line-clamp-2">
-              {hotel.name}
-            </h2>
-          </Link>
+      {/* MIDDLE: info + teaser room list */}
+      <div className="flex flex-1 flex-col p-5">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Link href={`/hotel/${hotel.id}`} className="block">
+              <h2 className="truncate text-xl font-semibold text-zinc-900 hover:underline">
+                {hotel.name}
+              </h2>
+            </Link>
+            <div className="mt-1 truncate text-sm text-zinc-700">
+              📍 {hotel.address || hotel.city}
+              {hotel.country ? `, ${hotel.country}` : ''}
+            </div>
+            {!!hotel.description && (
+              <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{hotel.description}</p>
+            )}
 
-          <div className="text-right">
-            <div className="text-blue-600 font-bold text-lg">{rating.toFixed(1)}</div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700">
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                {hotel.stars} sao
+              </span>
+              <span className="rounded-full bg-zinc-100 px-2 py-1 text-zinc-700">
+                {rooms.length} hạng phòng
+              </span>
+              <span className="rounded-full bg-zinc-100 px-2 py-1 text-zinc-700">
+                {totalRoomsLeft} phòng còn
+              </span>
+            </div>
+          </div>
+
+          {/* Giá từ */}
+          <div className="shrink-0 text-right">
+            <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+              Đặt ngay
+            </span>
+            <div className="mt-1 text-xs text-zinc-500">Giá từ</div>
+            <div className="text-2xl font-extrabold text-orange-600">
+              {nightly == null ? '—' : VND(nightly)}
+            </div>
             <div className="text-xs text-zinc-500">
-              ({reviews} đánh giá)
-              <div className="mt-0.5 text-[11px] text-zinc-500">Xuất sắc</div>
+              /đêm • {nights} đêm · {roomsNeeded} phòng
             </div>
           </div>
         </div>
 
-        {/* Type + stars + rank note */}
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5">
-            🏨 Khách sạn
-          </span>
-          <span className="text-amber-500">{'★'.repeat(hotel.stars)}</span>
-          {rankNote && (
-            <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
-              {rankNote}
-            </span>
+        {/* Teaser rooms (tối đa 3) */}
+        <div className="mt-4 rounded-2xl border bg-white">
+          <ul className="divide-y">
+            {loadingRooms && <li className="px-4 py-3 text-sm text-zinc-500">Đang tải phòng…</li>}
+            {roomErr && !loadingRooms && (
+              <li className="px-4 py-3 text-sm text-red-600">Lỗi tải phòng: {roomErr}</li>
+            )}
+            {!loadingRooms && !roomErr && teaserRooms.length === 0 && (
+              <li className="px-4 py-3 text-sm text-zinc-500">Chưa có phòng khả dụng.</li>
+            )}
+
+            {teaserRooms.map((r) => {
+              const okCap = (r.capacity ?? 0) >= totalGuests;
+              const okStock = (r.availableRooms ?? 0) >= roomsNeeded;
+              const disabled = !(okCap && okStock) || (r.availableRooms ?? 0) <= 0;
+
+              return (
+                <li key={r.id} className="grid grid-cols-12 items-center gap-2 px-4 py-3">
+                  <div className="col-span-12 sm:col-span-5">
+                    <div className="flex items-center gap-2">
+                      <BedDouble className="h-4 w-4 text-zinc-500" />
+                      <span className="font-medium text-zinc-900">{r.roomType}</span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-zinc-600">
+                      <span className="inline-flex items-center gap-1">
+                        <Users2 className="h-3.5 w-3.5" />
+                        {r.capacity} khách/phòng
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <DoorOpen className="h-3.5 w-3.5" />
+                        {r.availableRooms} phòng còn
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="col-span-6 sm:col-span-3 text-sm font-semibold sm:text-base">
+                    {VND(r.pricePerNight)}/đêm
+                  </div>
+
+                  <div className="col-span-6 sm:col-span-4 text-right">
+                    <Link
+                      href={`/hotel/${hotel.id}?room=${r.id}`}
+                      className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                        disabled
+                          ? 'cursor-not-allowed bg-zinc-200 text-zinc-500'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                      aria-disabled={disabled}
+                      title={
+                        disabled ? 'Không đáp ứng điều kiện khách/phòng' : 'Xem chi tiết phòng'
+                      }
+                    >
+                      Xem chi tiết
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Link xem toàn bộ phòng */}
+          {rooms.length > 3 && (
+            <div className="border-t px-4 py-2 text-right">
+              <Link
+                href={`/hotel/${hotel.id}`}
+                className="text-sm font-medium text-blue-700 hover:underline"
+              >
+                Xem tất cả {rooms.length} phòng →
+              </Link>
+            </div>
           )}
         </div>
-
-        {/* Location */}
-        <div className="mt-2 flex items-center gap-2 text-sm text-zinc-700">
-          📍 <span className="line-clamp-1">{hotel.address || hotel.city}</span>
-        </div>
-
-        {/* Amenities */}
-        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          {hotel.amenity_groups?.[0]?.items.slice(0, 3).map((a, i) => (
-            <span key={i} className="rounded bg-zinc-100 px-2 py-1">
-              {a}
-            </span>
-          ))}
-          {hotel.amenity_groups?.[0]?.items.length > 3 && (
-            <span className="rounded bg-zinc-100 px-2 py-1">
-              +{(hotel.amenity_groups?.[0]?.items.length || 0) - 3}
-            </span>
-          )}
-        </div>
-
-        {/* Points + Promo */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-700">
-            🪙 {points.toLocaleString('vi-VN')} Points
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-            % Mã giảm đến 500K có sẵn trong ví của bạn!
-          </span>
-        </div>
-      </div>
-
-      {/* RIGHT: Price & CTA */}
-      <div className="w-[220px] border-l p-4 flex flex-col justify-between text-right">
-        <div>
-          {promoBadge && (
-            <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-              {promoBadge}
-            </span>
-          )}
-          {oldPrice && (
-            <div className="mt-2 text-sm text-zinc-400 line-through">{VND(oldPrice)}</div>
-          )}
-          <div className="mt-1 text-xl font-bold text-orange-600">{VND(price)}</div>
-          <div className="text-xs text-zinc-500">{taxNote}</div>
-        </div>
-
-        <Link
-          href={`/hotel/${hotel.id}`}
-          className="mt-3 inline-block rounded-lg bg-orange-500 px-4 py-2 text-white font-semibold hover:bg-orange-600"
-        >
-          Chọn phòng
-        </Link>
       </div>
     </article>
   );

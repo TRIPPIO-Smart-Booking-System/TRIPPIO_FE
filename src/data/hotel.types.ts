@@ -1,56 +1,47 @@
-export type AmenityGroup = { name: string; items: string[] };
-
-export type Policy = {
-  checkin_time: string;
-  checkout_time: string;
-  cancel_rules: string[];
-  child_policy?: string;
-  pet_policy?: string;
-  tax_fees?: { label: string; amount: number }[];
+export type ApiRoom = {
+  id: string;
+  hotelId: string;
+  roomType: string;
+  pricePerNight: number;
+  capacity: number; // tổng số người (adults + children) ngủ tối đa
+  availableRooms: number; // số phòng còn trống
+  dateCreated: string;
+  modifiedDate: string;
+  hotel: string; // theo schema (có thể là name), không dùng cũng được
 };
 
-export type RoomType = {
+export type ApiHotel = {
   id: string;
   name: string;
-  size_m2: number;
-  bed: 'Double' | 'Twin' | 'Queen' | 'King' | 'Mixed';
-  max_guests: number;
-  smoking: boolean;
-  images: string[];
-  amenities: string[];
-};
-
-export type Hotel = {
-  id: string;
-  name: string;
-  stars: 3 | 4 | 5;
-  rating?: number;
   address: string;
   city: string;
-  lat: number;
-  lng: number;
+  country: string;
   description: string;
-  images: string[];
-  amenity_groups: AmenityGroup[];
-  policy: Policy;
-  room_types: RoomType[];
-};
-
-export type RoomOffer = {
-  room_type_id: string;
-  breakfast: boolean;
-  free_cancel_until?: string;
-  pay_at_hotel?: boolean;
-  price_per_night: number;
-  nights: number;
-  total: number;
-};
-
-export type NearbyHotel = {
-  id: string;
-  name: string;
-  image: string;
-  price_from: number;
   stars: number;
-  distance_km?: number;
+  dateCreated: string;
+  modifiedDate: string;
+  rooms: ApiRoom[];
 };
+
+/** Tính số đêm từ YYYY-MM-DD */
+export function nightsBetween(checkIn: string, checkOut: string) {
+  const a = new Date(checkIn);
+  const b = new Date(checkOut);
+  const ms = b.setHours(0, 0, 0, 0) - a.setHours(0, 0, 0, 0);
+  return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
+
+/** Chọn phòng hợp lệ theo nhu cầu & trả về giá min/đêm của các phòng đủ điều kiện */
+export function getMinNightlyPrice(hotel: ApiHotel, totalGuests: number, roomsNeeded: number) {
+  // Điều kiện tối thiểu: còn phòng & sức chứa phòng >= tổng khách / số phòng (đơn giản) hoặc >= totalGuests nếu đặt 1 phòng
+  // Ở đây làm đơn giản: nhận bất kỳ phòng capacity >= 1, còn phòng > 0; để chặt chẽ hơn có thể tính tổ hợp.
+  const eligible = hotel.rooms.filter((r) => r.availableRooms > 0 && r.capacity >= 1);
+  if (!eligible.length) return null;
+  return Math.min(...eligible.map((r) => r.pricePerNight));
+}
+
+/** Lọc theo city (nếu có) */
+export function filterByCity(hotels: ApiHotel[], city: string) {
+  if (!city) return hotels;
+  return hotels.filter((h) => h.city?.toLowerCase() === city.toLowerCase());
+}
