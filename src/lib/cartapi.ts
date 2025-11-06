@@ -63,20 +63,29 @@ function unwrapData<T>(raw: unknown): T {
   return hasData<T>(raw) ? (raw as { data: T }).data : (raw as T);
 }
 
+/* ---------------- API payload types from BE ---------------- */
+type ApiBasketItemIn = Partial<BasketItem> & Record<string, unknown>;
+type ApiBasket = { userId?: string; items?: ApiBasketItemIn[] };
+
 /* ---------------- normalizer ---------------- */
-function normalizeItems(itemsIn: any[]): BasketItem[] {
-  return (itemsIn ?? []).map((i) => {
-    const unitNum = Number(i?.unitPrice ?? i?.price ?? 0);
-    const qNum = Number(i?.quantity ?? 0);
+function normalizeItems(itemsIn: ApiBasketItemIn[] = []): BasketItem[] {
+  return itemsIn.map((i) => {
+    const unitNum = Number(
+      (i as Record<string, unknown>)?.unitPrice ?? (i as Record<string, unknown>)?.price ?? 0
+    );
+    const qNum = Number((i as Record<string, unknown>)?.quantity ?? 0);
     return {
-      productId: String(i?.productId ?? ''),
-      quantity: isNaN(qNum) ? 0 : qNum,
-      unitPrice: isNaN(unitNum) ? 0 : unitNum,
-      price: typeof i?.price === 'number' ? i.price : undefined,
-      name: i?.name,
-      kind: i?.kind,
-      meta: i?.meta,
-    } as BasketItem;
+      productId: String((i as Record<string, unknown>)?.productId ?? ''),
+      quantity: Number.isNaN(qNum) ? 0 : qNum,
+      unitPrice: Number.isNaN(unitNum) ? 0 : unitNum,
+      price:
+        typeof (i as Record<string, unknown>)?.price === 'number'
+          ? (i as { price: number }).price
+          : undefined,
+      name: (i as Record<string, unknown>)?.name as string | undefined,
+      kind: (i as Record<string, unknown>)?.kind as BasketItem['kind'] | undefined,
+      meta: (i as Record<string, unknown>)?.meta as Record<string, unknown> | undefined,
+    };
   });
 }
 
@@ -90,7 +99,7 @@ export async function getBasket(): Promise<Basket> {
   });
   if (!res.ok) throw new Error(`Basket GET ${res.status}`);
   const raw = await safeJson(res);
-  const data = unwrapData<{ userId?: string; items?: any[] }>(raw ?? {});
+  const data = unwrapData<ApiBasket>(raw ?? {});
   return { userId: data?.userId ?? userId, items: normalizeItems(data?.items ?? []) };
 }
 

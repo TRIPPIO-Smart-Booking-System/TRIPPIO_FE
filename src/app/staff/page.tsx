@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+
 import { getAuth } from '@/lib/auth';
 import { apiListShows, ApiShow } from '@/data/show.api';
 
@@ -65,7 +65,6 @@ function toLocal(d: string) {
 
 /* ---------- Page ---------- */
 export default function StaffDashboardPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 

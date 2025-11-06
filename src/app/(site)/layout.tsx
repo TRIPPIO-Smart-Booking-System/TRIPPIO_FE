@@ -1,4 +1,4 @@
-// src/app/(site)/layout.tsx  (hoặc file layout bạn đang dùng)
+// src/app/(site)/layout.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -6,6 +6,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import Headers from '@/components/layout/Header';
 import FloatingDock from '@/components/FloatingDock';
 import ChatWidget from '@/components/ChatWidget';
+
+/* ---------- Types ---------- */
+type JwtPayload = {
+  roles?: string[] | string;
+  role?: string;
+  [k: string]: unknown;
+};
 
 /* ---------- Helpers ---------- */
 function hasToken(): boolean {
@@ -20,13 +27,13 @@ function hasToken(): boolean {
   }
 }
 
-function parseJwt(token?: string): any | null {
+function parseJwt(token?: string): JwtPayload | null {
   if (!token) return null;
   try {
     const b64 = token.split('.')[1];
     if (!b64) return null;
     const json = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
+    return JSON.parse(json) as unknown as JwtPayload;
   } catch {
     return null;
   }
@@ -75,18 +82,14 @@ function isPublicPath(p: string): boolean {
 }
 
 /* ---------- Layout ---------- */
-// ...giữ nguyên phần import & helpers
-
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname() || '/';
   const [ready, setReady] = useState(false);
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
-  const tokenExists = useMemo(
-    () => (typeof window !== 'undefined' ? hasToken() : false),
-    [pathname]
-  );
+  // No unnecessary deps warning: compute once (reload on 'auth:changed' anyway)
+  const tokenExists = useMemo(() => (typeof window !== 'undefined' ? hasToken() : false), []);
   const isPublic = useMemo(() => isPublicPath(pathname), [pathname]);
 
   useEffect(() => {
@@ -132,16 +135,15 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
 
     const inAdmin = pathname.startsWith('/admin');
     const inStaff = pathname.startsWith('/staff');
-    const inAccount = pathname.startsWith('/account'); // 👈 thêm dòng này
+    const inAccount = pathname.startsWith('/account');
 
-    // ─── /account: CHO MỌI ROLE ĐÃ LOGIN ───
+    // /account: CHO MỌI ROLE ĐÃ LOGIN
     if (inAccount) {
-      // 👈 thêm block này
       setAllowed(true);
       return;
     }
 
-    // ─── Admin area ───
+    // Admin area
     if (roles.includes('admin')) {
       if (inAdmin) {
         setAllowed(true);
@@ -152,7 +154,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // ─── Staff area ───
+    // Staff area
     if (roles.includes('staff')) {
       if (inStaff) {
         setAllowed(true);
@@ -163,7 +165,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // ─── Customer ───
+    // Customer
     if (isCustomer(roles)) {
       if (inAdmin || inStaff) {
         router.replace('/homepage');

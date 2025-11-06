@@ -6,6 +6,19 @@ import { postJSON } from '@/lib/http';
 
 type ResetResp = { isSuccess?: boolean; message?: string };
 
+/* ----------------------- Error helpers ----------------------- */
+type WithMessage = { message?: unknown };
+function hasMessage(x: unknown): x is WithMessage {
+  return typeof x === 'object' && x !== null && 'message' in x;
+}
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (hasMessage(err) && typeof err.message === 'string' && err.message.trim()) {
+    return err.message;
+  }
+  return 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.';
+}
+
 /* ----------------------- Small helpers ----------------------- */
 function Eye({ className }: { className?: string }) {
   return (
@@ -69,7 +82,6 @@ function scorePassword(pwd: string) {
   ];
   score = rules.reduce((s, ok) => s + (ok ? 1 : 0), 0);
 
-  // Normalize to 0..4
   if (score >= 5) score = 4;
   else if (score >= 4) score = 3;
   else if (score >= 3) score = 2;
@@ -96,7 +108,6 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Guard: phải đến từ verify-otp (OTP đã lưu trong sessionStorage)
   useEffect(() => {
     const fromSS = (() => {
       try {
@@ -163,14 +174,13 @@ export default function ResetPasswordPage() {
       } catch {}
       router.replace('/login');
       router.refresh();
-    } catch (e: any) {
-      setErr(e?.message || 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.');
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
   }
 
-  /* ----------------------- UI ----------------------- */
   return (
     <div className="relative min-h-[100dvh] overflow-hidden">
       {/* Background layers */}
@@ -207,7 +217,7 @@ export default function ResetPasswordPage() {
               </div>
 
               <form onSubmit={onSubmit} className="space-y-5">
-                {/* Email (readable) */}
+                {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-800">Email</label>
                   <input
@@ -328,14 +338,12 @@ export default function ResetPasswordPage() {
                   </ul>
                 </div>
 
-                {/* Error */}
                 {err && (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700">
                     {err}
                   </div>
                 )}
 
-                {/* Actions */}
                 <button
                   type="submit"
                   disabled={disabled}
@@ -365,7 +373,6 @@ export default function ResetPasswordPage() {
             </div>
           </div>
 
-          {/* subtle badges */}
           <div className="mt-4 flex items-center justify-center gap-2 text-xs text-white/90 drop-shadow">
             <span className="rounded-full bg-white/20 px-2 py-1 backdrop-blur-sm">
               Bảo mật AES-256

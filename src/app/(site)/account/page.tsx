@@ -22,8 +22,8 @@ export default function AccountPage() {
       setUser(u);
       mergeCachedUser(u); // đồng bộ local cache cho các nơi khác dùng
       setStatus('ok');
-    } catch (e: any) {
-      const msg = String(e?.message || '');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('HTTP 401') || msg.includes('HTTP 403')) {
         setUser(null);
         setStatus('unauth');
@@ -38,9 +38,11 @@ export default function AccountPage() {
   useEffect(() => {
     loadMe();
     // khi login/logout ở nơi khác → reload
-    const onAuth = () => loadMe();
-    window.addEventListener(AUTH_EVENT_NAME, onAuth);
-    return () => window.removeEventListener(AUTH_EVENT_NAME, onAuth);
+    const onAuth = () => {
+      void loadMe();
+    };
+    window.addEventListener(AUTH_EVENT_NAME, onAuth as EventListener);
+    return () => window.removeEventListener(AUTH_EVENT_NAME, onAuth as EventListener);
   }, []);
 
   const onUserChange = (u: UserResponse) => {
@@ -50,7 +52,7 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-[80vh] bg-slate-50">
-      <div className="mx-auto w/full max-w-7xl px-4 py-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
           <SidebarAccount
             activeTab={tab}

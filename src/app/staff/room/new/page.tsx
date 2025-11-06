@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getAuth } from '@/lib/auth';
 
@@ -57,7 +57,7 @@ export default function CreateRoomPage() {
         if (!res.ok) throw new Error(`Hotel HTTP ${res.status}`);
         const data = (await res.json()) as ApiHotel[];
         setHotels(Array.isArray(data) ? data : []);
-      } catch (e) {
+      } catch {
         setHotels([]);
       } finally {
         setLoadingHotels(false);
@@ -86,7 +86,7 @@ export default function CreateRoomPage() {
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} tạo Room thất bại`);
-      const created = await res.json().catch(() => ({}) as { id?: string });
+      const created = (await res.json().catch(() => ({}))) as { id?: string };
       router.push(created?.id ? `/hotel/${f.hotelId}?room=${created.id}` : `/staff/room`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Create failed');
@@ -95,13 +95,16 @@ export default function CreateRoomPage() {
     }
   }
 
+  const inputCls =
+    'w-full border border-zinc-200 rounded-2xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent';
+
   return (
     <div className="mx-auto max-w-2xl p-6">
       <h1 className="mb-4 text-2xl font-bold">🛏️ Tạo Room</h1>
       <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border bg-white p-5 shadow">
         <Field label="Hotel *">
           <select
-            className="input"
+            className={inputCls}
             value={f.hotelId}
             onChange={(e) => setF((s) => ({ ...s, hotelId: e.target.value }))}
             required
@@ -118,7 +121,7 @@ export default function CreateRoomPage() {
 
         <Field label="Hạng phòng (roomType) *">
           <input
-            className="input"
+            className={inputCls}
             value={f.roomType}
             onChange={(e) => setF((s) => ({ ...s, roomType: e.target.value }))}
             required
@@ -130,7 +133,7 @@ export default function CreateRoomPage() {
             <input
               type="number"
               min={0}
-              className="input"
+              className={inputCls}
               value={f.pricePerNight}
               onChange={(e) => setF((s) => ({ ...s, pricePerNight: Number(e.target.value) }))}
               required
@@ -140,7 +143,7 @@ export default function CreateRoomPage() {
             <input
               type="number"
               min={1}
-              className="input"
+              className={inputCls}
               value={f.capacity}
               onChange={(e) => setF((s) => ({ ...s, capacity: Number(e.target.value) }))}
               required
@@ -150,7 +153,7 @@ export default function CreateRoomPage() {
             <input
               type="number"
               min={0}
-              className="input"
+              className={inputCls}
               value={f.availableRooms}
               onChange={(e) => setF((s) => ({ ...s, availableRooms: Number(e.target.value) }))}
               required
@@ -187,19 +190,11 @@ export default function CreateRoomPage() {
           </button>
         </div>
       </form>
-      <style jsx global>{`
-        .input {
-          width: 100%;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.75rem;
-          padding: 0.5rem 0.75rem;
-        }
-      `}</style>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
       <div className="mb-1 text-sm text-zinc-700">{label}</div>

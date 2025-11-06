@@ -1,8 +1,6 @@
-/* eslint react/prop-types: 0 */
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
   LayoutDashboard,
@@ -33,7 +31,6 @@ import {
   loadLocalHistory as loadLocalPayments,
   fmtVND as fmtVND_Pay,
 } from '@/lib/payment';
-import { Order, OrderStatus, loadLocalOrders } from '@/lib/orders';
 
 import type { ApexOptions } from 'apexcharts';
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -159,20 +156,22 @@ function loadLocalReviews(): LocalReview[] {
 function typedEntries<T extends Record<string, unknown>>(obj: T) {
   return Object.entries(obj) as { [K in keyof T]: [K, T[K]] }[keyof T][];
 }
+
 function toCSV<T extends Record<string, unknown>>(rows: T[]): string {
   if (!rows.length) return '';
-  const headers = Object.keys(rows[0]);
+  const headers = Object.keys(rows[0]) as Array<keyof T>;
   const lines = rows.map((r) =>
     headers
       .map((h) => {
-        const v = (r as any)[h];
+        const v = r[h];
         const s = v == null ? '' : String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       })
       .join(',')
   );
-  return [headers.join(','), ...lines].join('\n');
+  return [(headers as string[]).join(','), ...lines].join('\n');
 }
+
 function downloadCSV<T extends Record<string, unknown>>(filename: string, rows: T[]) {
   const csv = toCSV(rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -219,7 +218,6 @@ export default function AdminDashboardPage() {
   // auto refresh
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastUpdatedRef = useRef<Date | null>(null);
-  const [tick, setTick] = useState(0);
 
   const router = useRouter();
   function logout() {
@@ -334,14 +332,11 @@ export default function AdminDashboardPage() {
     loadAll();
     const reload = () => loadAll();
     window.addEventListener('payments:changed', reload);
-    window.addEventListener('reviews:changed', reload); // nếu có broadcast từ trang Orders
-    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    window.addEventListener('reviews:changed', reload);
     return () => {
       window.removeEventListener('payments:changed', reload);
       window.removeEventListener('reviews:changed', reload);
-      clearInterval(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // auto refresh mỗi 5s khi bật
@@ -351,7 +346,6 @@ export default function AdminDashboardPage() {
       loadAll();
     }, 5000);
     return () => clearInterval(itv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh]);
 
   /* ---------- KPI (chỉ từ payments) ---------- */
@@ -403,16 +397,6 @@ export default function AdminDashboardPage() {
     return { categories: ent.map((e) => e[0] as string), series: ent.map((e) => Number(e[1])) };
   }, [shows]);
 
-  const lineAgg = useMemo(() => {
-    const map: Record<string, number> = {};
-    trips.forEach((t) => {
-      const day = (t.departureTime || '').slice(0, 10);
-      if (day) map[day] = (map[day] ?? 0) + (t.availableSeats || 0);
-    });
-    const ent = typedEntries(map).sort((a, b) => ((a[0] as string) < (b[0] as string) ? -1 : 1));
-    return { categories: ent.map((e) => e[0] as string), series: ent.map((e) => Number(e[1])) };
-  }, [trips]);
-
   const methodAgg = useMemo(() => {
     const map: Record<string, number> = {};
     paidPays.forEach((p) => {
@@ -435,7 +419,7 @@ export default function AdminDashboardPage() {
       );
   }, [payments, payStatus, qPays]);
 
-  // Reviews chỉ show review khớp với một payment (ưu tiên Paid); nếu orderId không nằm trong payment thì vẫn hiển thị (đề phòng)
+  // Reviews only show entries that can be joined with a payment (prefer Paid); if missing, still show
   const paymentByOrder = useMemo(() => {
     const map = new Map<string, PaymentRecord>();
     payments.forEach((p) => {
@@ -715,9 +699,9 @@ export default function AdminDashboardPage() {
               </div>
               <select
                 value={payStatus}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                   setPagePays(1);
-                  setPayStatus(e.target.value as any);
+                  setPayStatus(e.target.value as 'ALL' | PaymentStatus);
                 }}
                 className="h-10 rounded-xl border bg-white px-3"
               >
@@ -922,14 +906,14 @@ export default function AdminDashboardPage() {
                 />
               </div>
               <select
-                value={reviewStars as any}
-                onChange={(e) => {
+                value={String(reviewStars)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                   setPageReviews(1);
                   const v =
                     e.target.value === 'ALL'
                       ? 'ALL'
                       : (Number(e.target.value) as 1 | 2 | 3 | 4 | 5);
-                  setReviewStars(v as any);
+                  setReviewStars(v);
                 }}
                 className="h-10 rounded-xl border bg-white px-3"
               >

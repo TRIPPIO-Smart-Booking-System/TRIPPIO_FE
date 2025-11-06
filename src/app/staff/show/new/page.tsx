@@ -68,16 +68,14 @@ function errorMessage(e: unknown): string {
   return 'Đã xảy ra lỗi';
 }
 
+/** Narrower type guard without `any` */
 function isProvinceArray(x: unknown): x is Province[] {
   return (
     Array.isArray(x) &&
-    x.every((i) => typeof (i as any)?.code !== 'undefined' && typeof (i as any)?.name === 'string')
-  );
-}
-function isDistrictArray(x: unknown): x is District[] {
-  return (
-    Array.isArray(x) &&
-    x.every((i) => typeof (i as any)?.code !== 'undefined' && typeof (i as any)?.name === 'string')
+    x.every((i): i is Province => {
+      const it = i as Record<string, unknown>;
+      return typeof it.code !== 'undefined' && typeof it.name === 'string';
+    })
   );
 }
 
@@ -176,14 +174,14 @@ export default function StaffShowCreatePage() {
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const raw: unknown = await res.json();
-          const list = isProvinceArray((raw as any)?.results ?? raw)
-            ? ((raw as any)?.results ?? (raw as Province[]))
-            : [];
 
-          if (!list?.length) throw new Error('empty_upstream_provinces');
+          // some upstream returns { results: Province[] } or Province[]
+          const maybe = (raw as { results?: unknown }).results ?? raw;
+          if (!isProvinceArray(maybe)) throw new Error('invalid_upstream_shape');
 
-          setProvinces(list.sort((a, b) => a.name.localeCompare(b.name, 'vi')));
-        } catch (e) {
+          const list = [...maybe].sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+          setProvinces(list);
+        } catch {
           // 2) fallback
           const fb = await fetchWithTimeout(PROVINCES_FALLBACK, {
             cache: 'no-store',
@@ -196,7 +194,7 @@ export default function StaffShowCreatePage() {
           if (!list2.length) throw new Error('fallback_province_empty');
           setProvinces(list2.sort((a, b) => a.name.localeCompare(b.name, 'vi')));
         }
-      } catch (e) {
+      } catch {
         setProvErr('Không tải được danh sách Tỉnh/Thành (upstream SSL lỗi & fallback thất bại).');
       } finally {
         setProvLoading(false);
@@ -222,7 +220,7 @@ export default function StaffShowCreatePage() {
       const all = mapGHDistricts(obj);
       const list = all.filter((d) => Number(d.province_code) === Number(code));
       setDistricts(list.sort((a, b) => a.name.localeCompare(b.name, 'vi')));
-    } catch (e) {
+    } catch {
       setDistErr('Không tải được Quận/Huyện (fallback).');
     } finally {
       setDistLoading(false);
@@ -263,12 +261,13 @@ export default function StaffShowCreatePage() {
 
         // Chuẩn hoá về mảng VMPlace
         const arr: VMPlace[] = Array.isArray((data as { data?: unknown[] }).data)
-          ? ((data as { data?: Array<{ name?: string; address?: string }> }).data ?? []).map(
-              (x) => ({
-                name: x?.name ?? '',
-                address: x?.address ?? '',
-              })
-            )
+          ? (
+              ((data as { data?: Array<{ name?: string; address?: string }> }).data ??
+                []) as Array<{ name?: string; address?: string }>
+            ).map((x) => ({
+              name: x?.name ?? '',
+              address: x?.address ?? '',
+            }))
           : Array.isArray((data as { features?: unknown[] }).features)
             ? (
                 (

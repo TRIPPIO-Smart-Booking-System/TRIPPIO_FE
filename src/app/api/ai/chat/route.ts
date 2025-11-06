@@ -1,21 +1,37 @@
+// src/app/api/ai/chat/route.ts
 import { NextRequest } from 'next/server';
-import { GoogleGenerativeAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const runtime = 'edge'; // nhanh, rẻ
+export const runtime = 'edge';
+
+type Msg = { role: 'user' | 'assistant'; content: string };
+type ReqBody = { message: string; history?: Msg[] };
 
 export async function POST(req: NextRequest) {
-  const { message } = (await req.json()) as { message: string };
+  const { message, history = [] } = (await req.json()) as ReqBody;
 
-  const client = new GoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_API_KEY!,
-    systemPrompt:
-      'bạn là trợ lý AI chuyên nghiệp cho web app du lịch có tên là trippio và bạn sẽ hỗ trợ user trong việc lên kế hoạch du lịch tối ưu hóa thời gian và nguồn tiền cho người dùng có thể đi du lịch 1 cách tiết kiệm nhất',
-  });
-  // flash = nhanh/rẻ; pro = thông minh hơn
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    return new Response('Missing GOOGLE_API_KEY', { status: 500 });
+  }
+
+  const client = new GoogleGenerativeAI({ apiKey });
   const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-  const result = await model.generateContent(message);
-  return new Response(result.response.text(), {
+  // optional: map history to contents (Gemini format)
+  const contents = [
+    { role: 'user', parts: [{ text: 'Bạn là trợ lý tiếng Việt, trả lời ngắn gọn, rõ ràng.' }] },
+    ...history.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    { role: 'user', parts: [{ text: message }] },
+  ];
+
+  const result = await model.generateContent({ contents });
+  const text = result.response.text();
+
+  return new Response(text, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
 }

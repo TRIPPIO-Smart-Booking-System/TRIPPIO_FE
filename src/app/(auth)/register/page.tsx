@@ -14,11 +14,24 @@ type RegisterApiResp = {
 };
 
 /* --------------------------- Utils --------------------------- */
+type WithMessage = { message?: unknown };
+function hasMessage(x: unknown): x is WithMessage {
+  return typeof x === 'object' && x !== null && 'message' in x;
+}
+
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err && 'message' in (err as any)) {
-    return String((err as any).message ?? 'Đã xảy ra lỗi');
+
+  if (hasMessage(err)) {
+    const m = err.message;
+    if (typeof m === 'string' && m.trim()) return m;
+    try {
+      return JSON.stringify(m) || 'Đã xảy ra lỗi';
+    } catch {
+      return 'Đã xảy ra lỗi';
+    }
   }
+
   return 'Đã xảy ra lỗi không xác định';
 }
 
@@ -158,9 +171,6 @@ export default function RegisterForm() {
 
       const data = await postJSON<RegisterApiResp>('/api/admin/auth/register', payload);
 
-      // Log để kiểm tra cấu trúc thực tế
-      console.log('[register] resp:', data);
-
       // Gom các điều kiện có thể yêu cầu OTP
       const needEmailOTP =
         data?.requireEmailVerification === true ||
@@ -169,11 +179,9 @@ export default function RegisterForm() {
 
       if (data?.isSuccess) {
         if (needEmailOTP) {
-          // chuyển thẳng sang OTP – tránh rớt về login
           router.replace(`/verify-otp?email=${encodeURIComponent(form.email.trim())}`);
           return;
         }
-        // Không cần OTP → có thể về login
         setMsg(data.message || 'Đăng ký thành công! Mời bạn đăng nhập.');
         setTimeout(() => router.replace('/login'), 400);
         return;

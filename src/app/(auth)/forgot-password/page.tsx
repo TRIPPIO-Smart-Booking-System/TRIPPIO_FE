@@ -39,9 +39,7 @@ export default function ForgotPasswordPage() {
   const emailValid = useMemo(() => {
     if (!email) return false;
     // đơn giản nhưng thực tế đủ dùng
-    const re =
-      // eslint-disable-next-line no-useless-escape
-      /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    const re = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
     return re.test(email.trim());
   }, [email]);
 

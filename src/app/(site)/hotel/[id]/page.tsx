@@ -113,7 +113,8 @@ function getOrCreateUserId() {
   }
 }
 
-function getAuthHeaders() {
+/** Return a plain header map (Record<string,string>) */
+function getAuthHeaders(): Record<string, string> {
   try {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -122,23 +123,26 @@ function getAuthHeaders() {
   }
 }
 
+/** Safe POST helper with proper HeadersInit typing */
 async function postJSON<T = unknown>(url: string, data?: unknown, init?: RequestInit): Promise<T> {
+  const base = new Headers({ 'Content-Type': 'application/json', ...getAuthHeaders() });
+  if (init?.headers) {
+    const extra = new Headers(init.headers as HeadersInit);
+    extra.forEach((v, k) => base.set(k, v));
+  }
+
   const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
-      ...(init?.headers || {}),
-    },
-    body: data ? JSON.stringify(data) : undefined,
     ...init,
+    method: init?.method ?? 'POST',
+    headers: base,
+    body: data ? JSON.stringify(data) : init?.body,
   });
+
   if (!res.ok) throw new Error(`POST ${url} → ${res.status}`);
-  // Some endpoints may return 204 No Content
   try {
     return (await res.json()) as T;
   } catch {
-    return {} as T;
+    return {} as T; // 204, empty, etc.
   }
 }
 
@@ -218,7 +222,6 @@ export default function HotelDetailPage() {
 
   // per-room qty
   const [qty, setQty] = useState<Record<string, number>>({});
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [highlightRoomId, setHighlightRoomId] = useState<string | null>(null);
 
   const setQtyFor = (roomId: string, n: number) =>
@@ -272,7 +275,6 @@ export default function HotelDetailPage() {
 
         // 5) Deep-link room highlight
         if (deepLinkRoomId && rooms.some((r) => r.id === deepLinkRoomId)) {
-          setExpanded((prev) => ({ ...prev, [deepLinkRoomId]: true }));
           setTimeout(() => {
             const el = document.getElementById(`room-${deepLinkRoomId}`);
             el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -423,7 +425,6 @@ export default function HotelDetailPage() {
 
             {selectedRoom ? (
               <RoomDetailPanel
-                hotel={hotel}
                 room={selectedRoom}
                 qty={qty[selectedRoom.id] ?? 1}
                 setQty={(n) => setQtyFor(selectedRoom.id, Math.min(n, selectedRoom.availableRooms))}
@@ -763,8 +764,8 @@ function HeroHeader({
         {['/hotel1.jpg', '/hotel2.jpg', '/hotel3.jpg', '/hotel4.jpg'].map((src, i) => (
           <div
             key={i}
-            className="h-28 w-full bg-[image:var(--img)] bg-cover bg-center"
-            style={{ ['--img' as any]: `url(${src})` }}
+            className="h-28 w-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${src})` }}
           >
             <div className="h-full w-full bg-gradient-to-t from-black/10 to-transparent" />
           </div>
@@ -929,7 +930,6 @@ function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
 
 /* ===== Single-room detail panel ===== */
 function RoomDetailPanel({
-  hotel,
   room,
   qty,
   setQty,
@@ -938,7 +938,6 @@ function RoomDetailPanel({
   onAddToCart,
   onBookNow,
 }: {
-  hotel: ApiHotel;
   room: ApiRoom;
   qty: number;
   setQty: (n: number) => void;

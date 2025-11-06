@@ -1,3 +1,4 @@
+// src/app/(site)/tours/page.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -14,6 +15,30 @@ const getDays = (duration: string) => {
   const n = parseInt(duration.split(' ')[0] ?? '0', 10);
   return Number.isFinite(n) ? n : 0;
 };
+
+/* ===== Stable option lists (hoisted to avoid changing identity) ===== */
+const timeOptions: { k: TimeRange; label: string; test: (d: number) => boolean }[] = [
+  { k: 'any', label: 'Bất kỳ', test: () => true },
+  { k: '1d', label: '1 ngày', test: (d) => d <= 1 },
+  { k: '2d', label: '≤ 2 ngày', test: (d) => d <= 2 },
+  { k: '3d', label: '3 ngày', test: (d) => d === 3 },
+  { k: '4d+', label: '≥ 4 ngày', test: (d) => d >= 4 },
+];
+
+const ratingOptions: { k: MinRating; label: string }[] = [
+  { k: 'any', label: 'Bất kỳ' },
+  { k: 5, label: 'Từ 5★' },
+  { k: 4.5, label: 'Từ 4.5★' },
+  { k: 4.0, label: 'Từ 4.0★' },
+  { k: 3.5, label: 'Từ 3.5★' },
+];
+
+const sortOptions: { k: SortKey; label: string }[] = [
+  { k: 'popular', label: 'Phổ biến (nhiều review)' },
+  { k: 'rating', label: 'Đánh giá cao' },
+  { k: 'price-asc', label: 'Giá: Thấp → Cao' },
+  { k: 'price-desc', label: 'Giá: Cao → Thấp' },
+];
 
 export default function ToursPage() {
   /* ===== Filter state ===== */
@@ -55,27 +80,7 @@ export default function ToursPage() {
     };
   }, []);
 
-  /* ===== Options ===== */
-  const timeOptions: { k: TimeRange; label: string; test: (d: number) => boolean }[] = [
-    { k: 'any', label: 'Bất kỳ', test: () => true },
-    { k: '1d', label: '1 ngày', test: (d) => d <= 1 },
-    { k: '2d', label: '≤ 2 ngày', test: (d) => d <= 2 },
-    { k: '3d', label: '3 ngày', test: (d) => d === 3 },
-    { k: '4d+', label: '≥ 4 ngày', test: (d) => d >= 4 },
-  ];
-  const ratingOptions: { k: MinRating; label: string }[] = [
-    { k: 'any', label: 'Bất kỳ' },
-    { k: 5, label: 'Từ 5★' },
-    { k: 4.5, label: 'Từ 4.5★' },
-    { k: 4.0, label: 'Từ 4.0★' },
-    { k: 3.5, label: 'Từ 3.5★' },
-  ];
-  const sortOptions: { k: SortKey; label: string }[] = [
-    { k: 'popular', label: 'Phổ biến (nhiều review)' },
-    { k: 'rating', label: 'Đánh giá cao' },
-    { k: 'price-asc', label: 'Giá: Thấp → Cao' },
-    { k: 'price-desc', label: 'Giá: Cao → Thấp' },
-  ];
+  /* ===== Options that depend on data ===== */
   const destinations = useMemo<Destination[]>(() => {
     const set = new Set<string>();
     allTours.forEach((t) => set.add(t.destination.split(',')[0].trim()));

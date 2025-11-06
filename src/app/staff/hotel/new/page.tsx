@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth } from '@/lib/auth';
 
@@ -45,7 +45,7 @@ export default function CreateHotelPage() {
         body: JSON.stringify(f),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} tạo Hotel thất bại`);
-      const created = await res.json().catch(() => ({}) as { id?: string });
+      const created = (await res.json().catch(() => ({}))) as { id?: string };
       router.push(created?.id ? `/hotel/${created.id}` : '/staff/hotel');
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Create failed');
@@ -54,30 +54,35 @@ export default function CreateHotelPage() {
     }
   }
 
+  const inputCls =
+    'w-full border border-zinc-200 rounded-2xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent';
+
   return (
     <div className="mx-auto max-w-2xl p-6">
       <h1 className="mb-4 text-2xl font-bold">🏨 Tạo Hotel</h1>
       <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border bg-white p-5 shadow">
         <Field label="Tên khách sạn *">
           <input
-            className="input"
+            className={inputCls}
             value={f.name}
             onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))}
             required
           />
         </Field>
+
         <Field label="Địa chỉ *">
           <input
-            className="input"
+            className={inputCls}
             value={f.address}
             onChange={(e) => setF((s) => ({ ...s, address: e.target.value }))}
             required
           />
         </Field>
+
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Thành phố *">
             <input
-              className="input"
+              className={inputCls}
               value={f.city}
               onChange={(e) => setF((s) => ({ ...s, city: e.target.value }))}
               required
@@ -85,27 +90,29 @@ export default function CreateHotelPage() {
           </Field>
           <Field label="Quốc gia *">
             <input
-              className="input"
+              className={inputCls}
               value={f.country}
               onChange={(e) => setF((s) => ({ ...s, country: e.target.value }))}
               required
             />
           </Field>
         </div>
+
         <Field label="Mô tả">
           <textarea
-            className="input"
+            className={inputCls}
             rows={3}
             value={f.description}
             onChange={(e) => setF((s) => ({ ...s, description: e.target.value }))}
           />
         </Field>
+
         <Field label="Sao *">
           <input
             type="number"
             min={1}
             max={5}
-            className="input"
+            className={inputCls}
             value={f.stars}
             onChange={(e) => setF((s) => ({ ...s, stars: Number(e.target.value) }))}
             required
@@ -135,19 +142,11 @@ export default function CreateHotelPage() {
           </button>
         </div>
       </form>
-      <style jsx global>{`
-        .input {
-          width: 100%;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.75rem;
-          padding: 0.5rem 0.75rem;
-        }
-      `}</style>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
       <div className="mb-1 text-sm text-zinc-700">{label}</div>

@@ -1,6 +1,6 @@
 // src/app/api/ai/stream/route.ts
 import { NextRequest } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const runtime = 'edge';
 
@@ -10,10 +10,14 @@ type ReqBody = { message: string; history?: Msg[] };
 export async function POST(req: NextRequest) {
   const { message, history = [] } = (await req.json()) as ReqBody;
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
-  const model = 'gemini-2.0-flash';
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    return new Response('Missing GOOGLE_API_KEY', { status: 500 });
+  }
 
-  // map history -> contents
+  const client = new GoogleGenerativeAI({ apiKey });
+  const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
   const contents = [
     { role: 'user', parts: [{ text: 'Bạn là trợ lý tiếng Việt, trả lời ngắn gọn, rõ ràng.' }] },
     ...history.map((m) => ({
@@ -23,35 +27,24 @@ export async function POST(req: NextRequest) {
     { role: 'user', parts: [{ text: message }] },
   ];
 
-  // ⬇️ result là AsyncGenerator<GenerateContentResponse>
-  const result = await ai.models.generateContentStream({ model, contents });
+  const result = await model.generateContentStream({ contents });
 
   const encoder = new TextEncoder();
-  const rs = new ReadableStream({
+  const stream = new ReadableStream({
     async start(controller) {
       try {
-        // 🔁 lặp trực tiếp trên generator (không dùng .stream)
-        for await (const chunk of result) {
-          // mỗi chunk là GenerateContentResponse
-          const text =
-            chunk?.candidates?.[0]?.content?.parts
-              ?.map((p: any) => (typeof p?.text === 'string' ? p.text : ''))
-              ?.join('') ?? '';
-
-          if (text) controller.enqueue(encoder.encode(text));
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          controller.enqueue(encoder.encode(text));
         }
-      } catch (e) {
-        controller.error(e);
-      } finally {
         controller.close();
+      } catch (err) {
+        controller.error(err);
       }
     },
   });
 
-  return new Response(rs, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-store',
-    },
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
 }

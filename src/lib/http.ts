@@ -8,7 +8,23 @@ function joinUrl(base: string, path: string) {
   return base + path;
 }
 
-export async function postJSON<T = any>(
+type JsonLike = Record<string, unknown> | unknown[] | string | number | boolean | null;
+
+type ErrorShape = {
+  message?: string;
+  error?: string;
+  [k: string]: unknown;
+};
+
+async function safeJson(res: Response): Promise<JsonLike> {
+  try {
+    return (await res.json()) as JsonLike;
+  } catch {
+    return {};
+  }
+}
+
+export async function postJSON<T = unknown>(
   url: string,
   body: unknown,
   init?: RequestInit
@@ -23,24 +39,23 @@ export async function postJSON<T = any>(
     }
     target = joinUrl(API_BASE, url); // -> http://localhost:7142/api/...
   } else if (!isAbsolute) {
-    // các relative khác (không bắt đầu /api/) giữ nguyên
     target = url;
   }
 
-  // Debug:
-  // console.log('[postJSON] target =', target);
-
   const res = await fetch(target, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     body: JSON.stringify(body),
     ...init,
   });
 
-  const data = await res.json().catch(() => ({}));
+  const data = (await safeJson(res)) as T | ErrorShape;
+
   if (!res.ok) {
-    const msg = (data && (data.message || data.error)) || `HTTP ${res.status}`;
-    throw new Error(msg);
+    const e = data as ErrorShape;
+    const msg = (e && (e.message || e.error)) || `HTTP ${res.status}`;
+    throw new Error(String(msg));
   }
+
   return data as T;
 }

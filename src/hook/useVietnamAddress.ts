@@ -1,7 +1,7 @@
 // src/hooks/useVietnamAddress.ts
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // API v2 (sau sáp nhập 07/2025)
 const V2 = 'https://provinces.open-api.vn/api/v2';

@@ -94,12 +94,35 @@ function persistAuth({
   }
 }
 
+/* --------- Shape + token extractor (no any) --------- */
+type ApiLoginShape = Partial<{
+  loginResponse: Partial<{
+    accessToken: string;
+    refreshToken?: string;
+    user?: UserInfo;
+  }>;
+  accessToken: string;
+  token: string;
+  jwt: string;
+  refreshToken: string;
+  user: UserInfo;
+}>;
+
 /** Lấy token/user từ mọi vị trí hay gặp (ưu tiên loginResponse) */
-function extractTokens(d: any): { accessToken?: string; refreshToken?: string; user?: UserInfo } {
+function extractTokens(d: unknown): {
+  accessToken?: string;
+  refreshToken?: string;
+  user?: UserInfo;
+} {
   if (!d || typeof d !== 'object') return {};
-  const accessToken = d?.loginResponse?.accessToken || d?.accessToken || d?.token || d?.jwt;
-  const refreshToken = d?.loginResponse?.refreshToken || d?.refreshToken;
-  const user = d?.loginResponse?.user || d?.user;
+  const obj = d as ApiLoginShape;
+
+  const accessToken = obj.loginResponse?.accessToken ?? obj.accessToken ?? obj.token ?? obj.jwt;
+
+  const refreshToken = obj.loginResponse?.refreshToken ?? obj.refreshToken;
+
+  const user = obj.loginResponse?.user ?? obj.user;
+
   return { accessToken, refreshToken, user };
 }
 
@@ -350,7 +373,7 @@ export default function LoginForm() {
                     {/* 👇 Forgot password link */}
                     <a
                       href={forgotHref}
-                      className="text-sm font-medium text-sky-600 hover:underline underline-offset-4"
+                      className="text-sm font-medium text-sky-600 underline-offset-4 hover:underline"
                       title="Quên mật khẩu?"
                     >
                       Quên mật khẩu?
@@ -391,7 +414,7 @@ export default function LoginForm() {
                 <button
                   type="submit"
                   disabled={isDisabled}
-                  className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-neutral-900 px-4 py-3 font-semibold text-white shadow-lg shadow-neutral-900/20 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 dark:bg_white dark:text-neutral-900"
+                  className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-neutral-900 px-4 py-3 font-semibold text-white shadow-lg shadow-neutral-900/20 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-neutral-900"
                 >
                   <span className="absolute inset-0 -z-10 animate-[pulse_3s_ease-in-out_infinite] bg-[conic-gradient(from_180deg_at_50%_50%,#22d3ee_0%,#f472b6_25%,#f59e0b_50%,#22c55e_75%,#22d3ee_100%)] opacity-0 blur-xl transition group-hover:opacity-40" />
                   {loading ? (
@@ -404,7 +427,7 @@ export default function LoginForm() {
                   )}
                 </button>
 
-                <p className="pt-1.5 text_center text-sm text-neutral-600 dark:text-neutral-300">
+                <p className="pt-1.5 text-center text-sm text-neutral-600 dark:text-neutral-300">
                   Chưa có tài khoản?{' '}
                   <a
                     href="/register"

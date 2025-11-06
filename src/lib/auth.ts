@@ -126,7 +126,13 @@ export function getCurrentUserId(): string | undefined {
 }
 
 // ==================== Persist buyer info ====================
-function persistBuyerInfo(user: any | undefined | null) {
+// A lightweight "user-like" shape we might receive từ nhiều BE khác nhau
+type BuyerLike = Partial<Pick<CachedUser, 'fullName' | 'userName' | 'phoneNumber' | 'email'>> & {
+  name?: string;
+  phone?: string;
+};
+
+function persistBuyerInfo(user: BuyerLike | undefined | null) {
   if (!hasWindow) return;
   try {
     const s = getStorage();
@@ -189,12 +195,13 @@ export function saveLoggedInUser(u: CachedUser | null | undefined) {
   const uid = String(u.id || '') || getCurrentUserId();
   if (!uid) return;
 
-  const normRoles =
-    (u.roles ?? []).map((r: any) =>
-      String(r || '')
-        .toLowerCase()
-        .replace(/^role_/, '')
-    ) || [];
+  const normRoles = Array.isArray(u.roles)
+    ? u.roles.map((r) =>
+        String(r || '')
+          .toLowerCase()
+          .replace(/^role_/, '')
+      )
+    : [];
 
   const map = readUserMap();
   map[uid] = { ...u, id: uid, roles: normRoles };
@@ -277,13 +284,13 @@ export function applyLoginPayload(p: LoginSuccessPayload): void {
 
   // Nếu không có token → fail
   if (!accessToken) {
-    persistBuyerInfo(p.user);
+    persistBuyerInfo(p.user as BuyerLike | null | undefined);
     clearAuth();
     return;
   }
 
   // Lưu buyer preset
-  persistBuyerInfo(p.user);
+  persistBuyerInfo(p.user as BuyerLike | null | undefined);
 
   // Tính toán các trường cơ bản
   const userId =
@@ -294,8 +301,13 @@ export function applyLoginPayload(p: LoginSuccessPayload): void {
     p.userName ||
     (p.user?.fullName as string | undefined) ||
     (p.user?.userName as string | undefined);
+
   const userPhone =
-    p.userPhone || (p.user?.phoneNumber as string | undefined) || (p.user as any)?.phone;
+    p.userPhone ??
+    (typeof p.user?.phoneNumber === 'string' ? p.user.phoneNumber : undefined) ??
+    (p.user && typeof (p.user as Record<string, unknown>).phone === 'string'
+      ? ((p.user as Record<string, unknown>).phone as string)
+      : undefined);
 
   const roles = normalizeRoles(p.roles ?? p.user?.roles);
 

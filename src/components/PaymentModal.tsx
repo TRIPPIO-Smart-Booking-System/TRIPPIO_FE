@@ -1,7 +1,7 @@
 /* eslint react/prop-types: 0 */
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { X, Loader2, Timer, ShieldCheck, CreditCard, CheckCircle2, RefreshCw } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth';
@@ -87,6 +87,17 @@ const FAIL_SET = new Set([
   'PAYMENT_CANCELLED',
 ]);
 
+// ---- helpers (type-safe error message) ----
+function toMessage(err: unknown, fallback = 'Unknown error'): string {
+  if (err instanceof Error && err.message) return err.message;
+  try {
+    const s = String(err);
+    return s && s !== '[object Object]' ? s : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function PaymentModal({
   open,
   onClose,
@@ -137,14 +148,14 @@ export default function PaymentModal({
     };
   }, [open]);
 
-  async function tryMakeQrDataUrl(payload: string): Promise<string> {
+  const tryMakeQrDataUrl = useCallback(async (payload: string): Promise<string> => {
     const text = String(payload ?? '').trim();
     if (!text) throw new Error('QR payload is empty');
     if (text.startsWith('data:image/')) return text;
     return QRCode.toDataURL(text, { width: 320, margin: 1, errorCorrectionLevel: 'M' });
-  }
+  }, []);
 
-  function clearAllTimers() {
+  const clearAllTimers = useCallback(() => {
     if (secondTimerRef.current) {
       clearInterval(secondTimerRef.current);
       secondTimerRef.current = null;
@@ -153,85 +164,86 @@ export default function PaymentModal({
       clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
     }
-  }
+  }, []);
 
-  async function pollStatusOnce(oCode: number, isManualCheck = false) {
-    if (!statusEndpoint) return;
-    try {
-      if (isManualCheck) {
-        setChecking(true);
-        setErr(null);
-        setSuccessMsg(null);
-      }
-
-      const token =
-        getAccessToken() ||
-        (typeof window !== 'undefined' ? (localStorage.getItem('accessToken') ?? '') : '');
-      const qs = new URLSearchParams({ orderCode: String(oCode) });
-      if (paymentLinkId) qs.set('paymentLinkId', paymentLinkId);
-      const r = await fetch(`${statusEndpoint}?${qs.toString()}`, {
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      if (!r.ok) {
+  // ---- pollStatusOnce (memoized) ----
+  const pollStatusOnce = useCallback(
+    async (oCode: number, isManualCheck = false) => {
+      if (!statusEndpoint) return;
+      try {
         if (isManualCheck) {
-          throw new Error(`Không thể kiểm tra trạng thái: HTTP ${r.status}`);
+          setChecking(true);
+          setErr(null);
+          setSuccessMsg(null);
         }
-        return;
-      }
-      const js = (await r.json()) as StatusResp;
-      const st = (js?.data?.status || js?.message || '').toUpperCase();
-      if (!st) {
-        if (isManualCheck) {
-          throw new Error('Không nhận được trạng thái thanh toán');
+
+        const token =
+          getAccessToken() ||
+          (typeof window !== 'undefined' ? (localStorage.getItem('accessToken') ?? '') : '');
+        const qs = new URLSearchParams({ orderCode: String(oCode) });
+        if (paymentLinkId) qs.set('paymentLinkId', paymentLinkId);
+        const r = await fetch(`${statusEndpoint}?${qs.toString()}`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!r.ok) {
+          if (isManualCheck) throw new Error(`Không thể kiểm tra trạng thái: HTTP ${r.status}`);
+          return;
         }
-        return;
-      }
+        const js = (await r.json()) as StatusResp;
+        const st = (js?.data?.status || js?.message || '').toUpperCase();
+        if (!st) {
+          if (isManualCheck) throw new Error('Không nhận được trạng thái thanh toán');
+          return;
+        }
 
-      setStatus(st);
+        setStatus(st);
 
-      if (PAID_SET.has(st)) {
-        if (!firedRef.current) {
-          firedRef.current = true;
+        if (PAID_SET.has(st)) {
+          if (!firedRef.current) {
+            firedRef.current = true;
+            clearAllTimers();
+            setSuccessMsg('✅ Thanh toán thành công! Đang xử lý...');
+            onPaid?.({
+              orderId: js?.data?.orderId ?? orderId ?? oCode,
+              orderCode: js?.data?.orderCode ?? oCode,
+              paymentLinkId: js?.data?.paymentLinkId ?? paymentLinkId ?? undefined,
+            });
+          }
+          return;
+        }
+
+        if (FAIL_SET.has(st)) {
           clearAllTimers();
-          setSuccessMsg('✅ Thanh toán thành công! Đang xử lý...');
-          onPaid?.({
-            orderId: js?.data?.orderId ?? orderId ?? oCode,
-            orderCode: js?.data?.orderCode ?? oCode,
-            paymentLinkId: js?.data?.paymentLinkId ?? paymentLinkId ?? undefined,
-          });
+          setErr('Thanh toán không thành công hoặc đã huỷ/hết hạn.');
+          onFailed?.({ status: st, orderCode: oCode, paymentLinkId: paymentLinkId ?? null });
+        } else if (isManualCheck) {
+          setSuccessMsg('⏳ Thanh toán đang chờ xử lý. Vui lòng kiểm tra lại sau.');
         }
-        return;
+      } catch (error) {
+        if (isManualCheck) {
+          setErr(toMessage(error, 'Không thể kiểm tra trạng thái thanh toán'));
+        }
+        // im lặng -> poll tiếp ở lần sau
+      } finally {
+        if (isManualCheck) setChecking(false);
       }
+    },
+    [statusEndpoint, paymentLinkId, clearAllTimers, onPaid, orderId, onFailed]
+  );
 
-      if (FAIL_SET.has(st)) {
-        clearAllTimers();
-        setErr('Thanh toán không thành công hoặc đã huỷ/hết hạn.');
-        onFailed?.({ status: st, orderCode: oCode, paymentLinkId: paymentLinkId ?? null });
-      } else if (isManualCheck) {
-        // Still pending
-        setSuccessMsg('⏳ Thanh toán đang chờ xử lý. Vui lòng kiểm tra lại sau.');
-      }
-    } catch (error: any) {
-      if (isManualCheck) {
-        setErr(error?.message || 'Không thể kiểm tra trạng thái thanh toán');
-      }
-      // im lặng -> poll tiếp ở lần sau
-    } finally {
-      if (isManualCheck) {
-        setChecking(false);
-      }
-    }
-  }
-
-  function startPolling(oCode: number) {
-    if (!statusEndpoint) return;
-    // ngay khi tạo xong -> check 1 lần sớm
-    void pollStatusOnce(oCode);
-    // lặp
-    pollTimerRef.current = setInterval(() => void pollStatusOnce(oCode), pollIntervalMs);
-  }
+  // ---- startPolling (memoized) ----
+  const startPolling = useCallback(
+    (oCode: number) => {
+      if (!statusEndpoint) return;
+      // ngay khi tạo xong -> check 1 lần sớm
+      void pollStatusOnce(oCode);
+      // lặp
+      pollTimerRef.current = setInterval(() => void pollStatusOnce(oCode), pollIntervalMs);
+    },
+    [statusEndpoint, pollStatusOnce, pollIntervalMs]
+  );
 
   // Poll lại khi tab quay về foreground (hữu ích vì bank app chuyển app)
   useEffect(() => {
@@ -241,7 +253,7 @@ export default function PaymentModal({
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [open, orderCode, statusEndpoint]);
+  }, [open, orderCode, statusEndpoint, pollStatusOnce]);
 
   // Boot khi mở modal
   useEffect(() => {
@@ -325,8 +337,8 @@ export default function PaymentModal({
 
         // Poll
         if (oc && statusEndpoint) startPolling(oc);
-      } catch (e: any) {
-        setErr(e?.message || 'Không khởi tạo được thanh toán');
+      } catch (e) {
+        setErr(toMessage(e, 'Không khởi tạo được thanh toán'));
       } finally {
         setLoading(false);
       }
@@ -344,7 +356,10 @@ export default function PaymentModal({
     buyerEmail,
     buyerPhone,
     orderId,
-    pollIntervalMs,
+    pollIntervalMs, // not strictly needed but harmless
+    clearAllTimers,
+    tryMakeQrDataUrl,
+    startPolling,
   ]);
 
   // Dừng poll khi hết hạn
@@ -354,7 +369,7 @@ export default function PaymentModal({
       clearAllTimers();
       setStatus((s) => (s && !PAID_SET.has(s) ? 'EXPIRED' : s));
     }
-  }, [expired, open]);
+  }, [expired, open, clearAllTimers]);
 
   if (!open) return null;
 

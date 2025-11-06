@@ -2,13 +2,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Home, Receipt, Star } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth';
 
 /* ================= Basics ================= */
 
-type Props = { searchParams?: { orderCode?: string } };
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
 
 const EVT_REVIEWS_CHANGED = 'reviews:changed';
@@ -22,6 +22,20 @@ const fmtVND = (n: number) =>
     maximumFractionDigits: 0,
   });
 
+type Transaction = {
+  reference?: string;
+  amount?: number;
+  accountNumber?: string;
+  description?: string;
+  transactionDateTime?: string; // ISO
+  virtualAccountName?: string | null;
+  virtualAccountNumber?: string | null;
+  counterAccountBankId?: string | null;
+  counterAccountBankName?: string | null;
+  counterAccountName?: string | null;
+  counterAccountNumber?: string | null;
+};
+
 type StatusResp = {
   code?: number;
   message?: string;
@@ -29,19 +43,7 @@ type StatusResp = {
     orderCode: number;
     amount: number;
     status: 'PENDING' | 'PAID' | 'CANCELLED' | 'EXPIRED' | string;
-    transactions?: Array<{
-      reference?: string;
-      amount?: number;
-      accountNumber?: string;
-      description?: string;
-      transactionDateTime?: string; // ISO
-      virtualAccountName?: string | null;
-      virtualAccountNumber?: string | null;
-      counterAccountBankId?: string | null;
-      counterAccountBankName?: string | null;
-      counterAccountName?: string | null;
-      counterAccountNumber?: string | null;
-    }>;
+    transactions?: Transaction[];
   };
 };
 
@@ -124,9 +126,10 @@ function broadcast(type: 'reviews' | 'payments') {
 
 /* ================= Page ================= */
 
-export default function PaymentSuccessPage({ searchParams }: Props) {
-  // ---- read orderCode from query
-  const orderCodeRaw = searchParams?.orderCode ?? '';
+export default function PaymentSuccessPage() {
+  // ---- read orderCode from query (Client-safe)
+  const sp = useSearchParams();
+  const orderCodeRaw = sp.get('orderCode') ?? '';
   const orderCode = useMemo(() => {
     const n = Number(orderCodeRaw);
     return Number.isFinite(n) && n > 0 ? n : undefined;
@@ -135,8 +138,11 @@ export default function PaymentSuccessPage({ searchParams }: Props) {
   const [amount, setAmount] = useState<number | undefined>(undefined);
   const [status, setStatus] = useState<string>('PENDING');
   const prevStatusRef = useRef<string>('PENDING');
-  const [txns, setTxns] = useState<StatusResp['data']['transactions']>([]);
+  const [txns, setTxns] = useState<Transaction[]>([]);
   const [err, setErr] = useState<string | null>(null);
+
+  // interval ref để có thể clear khi hết PENDING
+  const pollRef = useRef<number | null>(null);
 
   /* ===== Review UI states (local only; shared with Orders page) ===== */
   const [existing, setExisting] = useState<Review | null>(null);
@@ -224,22 +230,32 @@ export default function PaymentSuccessPage({ searchParams }: Props) {
       }
       prevStatusRef.current = newStatus;
 
-      setTxns(data?.data?.transactions || []);
+      setTxns(data?.data?.transactions ?? []);
+
+      // nếu đã xác định xong (không còn PENDING) -> dừng poll
+      if (newStatus !== 'PENDING' && pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setErr(msg || 'Không tải được thông tin thanh toán');
     }
   }, [orderCode]);
 
-  // Poll đến khi không còn PENDING
+  // Poll cho đến khi status != PENDING (fetchStatus sẽ tự dừng interval)
   useEffect(() => {
     if (!orderCode) return;
+
+    // gọi 1 lần ngay
     void fetchStatus();
-    const id = window.setInterval(() => {
-      if (status === 'PENDING') void fetchStatus();
-    }, 3000);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // bật polling
+    pollRef.current = window.setInterval(() => void fetchStatus(), 3000);
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    };
   }, [orderCode, fetchStatus]);
 
   /* ====== Submit review (LOCAL) + broadcast ====== */
