@@ -1,4 +1,3 @@
-import type { RoomOffer } from './hotel.types';
 import { mockHotel } from './hotel.mock';
 
 const nightsBetween = (checkIn: string, checkOut: string) => {

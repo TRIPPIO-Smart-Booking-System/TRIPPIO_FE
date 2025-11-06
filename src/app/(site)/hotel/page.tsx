@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import HotelSearchBar, { HotelSearchQuery } from '@/components/hotel/HotelSearchBar';
 import HotelCard from '@/components/hotel/HotelCard';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
 
 type SortKey = 'popularity' | 'priceAsc' | 'priceDesc' | 'ratingDesc';
 type ViewMode = 'grid' | 'list';

@@ -2,7 +2,7 @@
 'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   MapPin,
@@ -26,8 +26,17 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
+/* =========================
+    Config
+  ========================= */
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
+const LOCAL_CART_KEY = 'tripio_cart';
+const USER_ID_KEY = 'userId';
+const AUTH_TOKEN_KEY = 'authToken';
 
+/* =========================
+    Types
+  ========================= */
 type ApiRoom = {
   id: string;
   hotelId: string;
@@ -37,7 +46,6 @@ type ApiRoom = {
   availableRooms: number;
   dateCreated: string;
   modifiedDate: string | null;
-  hotel?: unknown;
 };
 
 type ApiHotel = {
@@ -53,7 +61,7 @@ type ApiHotel = {
   rooms: ApiRoom[];
 };
 
-type HotelCartItem = {
+type LocalCartItem = {
   kind: 'hotel';
   hotelId: string;
   hotelName: string;
@@ -67,19 +75,15 @@ type HotelCartItem = {
   subtotal: number;
 };
 
-const HOTEL_CART_KEY = 'tripio_cart';
-
-function addHotelToCart(item: HotelCartItem) {
-  try {
-    const raw = localStorage.getItem(HOTEL_CART_KEY);
-    const arr: HotelCartItem[] = raw ? JSON.parse(raw) : [];
-    arr.push(item);
-    localStorage.setItem(HOTEL_CART_KEY, JSON.stringify(arr));
-  } catch {}
-}
-
+/* =========================
+    Utilities
+  ========================= */
 const VND = (n: number) =>
   n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+
+function clamp(v: number, min = 0, max = 5) {
+  return Math.max(min, Math.min(max, v));
+}
 
 function buildMapsURL(
   parts: { address?: string; city?: string; country?: string; lat?: number; lng?: number },
@@ -96,7 +100,60 @@ function buildMapsURL(
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-const clamp = (v: number, min = 0, max = 5) => Math.max(min, Math.min(max, v));
+function getOrCreateUserId() {
+  try {
+    const existing = localStorage.getItem(USER_ID_KEY);
+    if (existing) return existing;
+    const uuid = crypto.randomUUID();
+    localStorage.setItem(USER_ID_KEY, uuid);
+    return uuid;
+  } catch {
+    // fallback: deterministic pseudo-id
+    return '00000000-0000-0000-0000-000000000000';
+  }
+}
+
+function getAuthHeaders() {
+  try {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+async function postJSON<T = unknown>(url: string, data?: unknown, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+      ...(init?.headers || {}),
+    },
+    body: data ? JSON.stringify(data) : undefined,
+    ...init,
+  });
+  if (!res.ok) throw new Error(`POST ${url} → ${res.status}`);
+  // Some endpoints may return 204 No Content
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
+function addLocalCart(item: LocalCartItem) {
+  try {
+    const raw = localStorage.getItem(LOCAL_CART_KEY);
+    const arr: LocalCartItem[] = raw ? JSON.parse(raw) : [];
+    arr.push(item);
+    localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+/* =========================
+    Amenities & UI bits
+  ========================= */
 function StarRating({ stars }: { stars: number }) {
   const s = clamp(stars);
   return (
@@ -111,7 +168,6 @@ function StarRating({ stars }: { stars: number }) {
     </div>
   );
 }
-
 function Badge({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white/70 px-3 py-1 text-xs text-zinc-700 shadow-sm backdrop-blur">
@@ -119,7 +175,6 @@ function Badge({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
-
 const AMENITIES: {
   key: string;
   label: string;
@@ -135,6 +190,9 @@ const AMENITIES: {
   { key: 'security', label: 'Bảo vệ 24/7', icon: ShieldCheck },
 ];
 
+/* =========================
+    Page
+  ========================= */
 export default function HotelDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -142,6 +200,7 @@ export default function HotelDetailPage() {
 
   const id = (params?.id as string) ?? '';
 
+  // Booking state
   const [checkIn, setCheckIn] = useState<string>(new Date().toISOString().slice(0, 10));
   const [checkOut, setCheckOut] = useState<string>(() => {
     const d = new Date();
@@ -151,11 +210,13 @@ export default function HotelDetailPage() {
   const [adults, setAdults] = useState<number>(2);
   const [children, setChildren] = useState<number>(0);
 
+  // Data
   const [hotel, setHotel] = useState<ApiHotel | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
   const [is404, setIs404] = useState<boolean>(false);
 
+  // per-room qty
   const [qty, setQty] = useState<Record<string, number>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [highlightRoomId, setHighlightRoomId] = useState<string | null>(null);
@@ -165,34 +226,51 @@ export default function HotelDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+
     (async () => {
       try {
         setLoading(true);
         setErr(null);
         setIs404(false);
 
-        const res = await fetch(`${API_BASE}/api/Hotel/${id}`, { cache: 'no-store' });
-        if (res.status === 404) {
+        // 1) Lấy Hotel theo id
+        const hotelRes = await fetch(`${API_BASE}/api/Hotel/${id}`, { cache: 'no-store' });
+        if (hotelRes.status === 404) {
           setIs404(true);
           setHotel(null);
           return;
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!hotelRes.ok) throw new Error(`HTTP ${hotelRes.status} khi lấy Hotel`);
 
-        const data: unknown = await res.json();
-        const h = data as ApiHotel;
+        const h = (await hotelRes.json()) as ApiHotel;
         if (!h?.id) throw new Error('Invalid payload');
 
-        const rooms = [...(h.rooms ?? [])].sort(
-          (a, b) => (a.pricePerNight ?? 0) - (b.pricePerNight ?? 0)
-        );
-        setHotel({ ...h, rooms });
+        // 2) Lấy Rooms theo hotelId (ưu tiên filter server-side)
+        let rooms: ApiRoom[] = [];
+        const filteredUrl = `${API_BASE}/api/Room?hotelId=${encodeURIComponent(h.id)}`;
+        const probe = await fetch(filteredUrl, { cache: 'no-store' });
 
+        if (probe.ok) {
+          rooms = (await probe.json()) as ApiRoom[];
+        } else {
+          const allRoomsRes = await fetch(`${API_BASE}/api/Room`, { cache: 'no-store' });
+          if (!allRoomsRes.ok) throw new Error(`HTTP ${allRoomsRes.status} khi lấy Room`);
+          const allRooms = (await allRoomsRes.json()) as ApiRoom[];
+          rooms = allRooms.filter((r) => r.hotelId === h.id);
+        }
+
+        rooms.sort((a, b) => (a.pricePerNight ?? 0) - (b.pricePerNight ?? 0));
+
+        // 3) Gán rooms vào state hotel
+        const merged: ApiHotel = { ...h, rooms };
+        setHotel(merged);
+
+        // 4) Init số lượng
         const init: Record<string, number> = {};
         rooms.forEach((r) => (init[r.id] = 1));
         setQty(init);
 
-        // nếu có deep-link phòng → mở mô tả + highlight + scroll
+        // 5) Deep-link room highlight
         if (deepLinkRoomId && rooms.some((r) => r.id === deepLinkRoomId)) {
           setExpanded((prev) => ({ ...prev, [deepLinkRoomId]: true }));
           setTimeout(() => {
@@ -239,8 +317,30 @@ export default function HotelDetailPage() {
     return null;
   }
 
-  function addToCart(h: ApiHotel, r: ApiRoom, roomsWanted: number) {
-    const item: HotelCartItem = {
+  /* ----- Server actions: Basket & Booking ----- */
+
+  async function apiAddToCart(room: ApiRoom, quantity: number) {
+    const userId = getOrCreateUserId();
+    const payload = {
+      productId: room.id, // as required by Swagger
+      quantity,
+      price: room.pricePerNight,
+    };
+    await postJSON(`${API_BASE}/api/Basket/${userId}/items`, payload);
+  }
+
+  async function apiBookNow(room: ApiRoom, quantity: number) {
+    // Adjust payload to match your Booking API, if needed
+    const payload = {
+      checkIn,
+      checkOut,
+      rooms: quantity,
+    };
+    await postJSON(`${API_BASE}/api/Booking/${room.id}`, payload);
+  }
+
+  function addLocalCartMirror(h: ApiHotel, r: ApiRoom, roomsWanted: number) {
+    const item: LocalCartItem = {
       kind: 'hotel',
       hotelId: h.id,
       hotelName: h.name,
@@ -253,9 +353,10 @@ export default function HotelDetailPage() {
       pricePerNight: r.pricePerNight,
       subtotal: r.pricePerNight * nights * roomsWanted,
     };
-    addHotelToCart(item);
+    addLocalCart(item);
   }
 
+  /* ----- UI states ----- */
   if (loading) return <SkeletonUI />;
   if (is404)
     return <EmptyState title="Không tìm thấy khách sạn" subtitle="Vui lòng quay lại Trang chủ" />;
@@ -267,9 +368,11 @@ export default function HotelDetailPage() {
     city: hotel.city,
     country: hotel.country,
   });
+  const selectedRoom: ApiRoom | undefined = hotel.rooms?.find((r) => r.id === deepLinkRoomId);
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+      {/* Header */}
       <HeroHeader
         hotel={hotel}
         mapsUrl={mapsUrl}
@@ -281,6 +384,7 @@ export default function HotelDetailPage() {
         <div className="md:col-span-8">
           <Gallery />
 
+          {/* Highlights */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -301,19 +405,60 @@ export default function HotelDetailPage() {
             </Badge>
           </motion.div>
 
-          {/* Rooms */}
+          {/* ===== Rooms ===== */}
           <section ref={roomsRef} className="mt-8">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Phòng còn trống</h2>
-              <button
-                onClick={goToRooms}
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
-              >
-                Xem phòng <ChevronRight className="h-4 w-4" />
-              </button>
+              <h2 className="text-lg font-semibold">
+                {selectedRoom ? 'Chi tiết phòng' : 'Phòng còn trống'}
+              </h2>
+              {!selectedRoom && (
+                <button
+                  onClick={goToRooms}
+                  className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                >
+                  Xem phòng <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
             </div>
 
-            {!hotel.rooms?.length ? (
+            {selectedRoom ? (
+              <RoomDetailPanel
+                hotel={hotel}
+                room={selectedRoom}
+                qty={qty[selectedRoom.id] ?? 1}
+                setQty={(n) => setQtyFor(selectedRoom.id, Math.min(n, selectedRoom.availableRooms))}
+                nights={nights}
+                totalGuests={totalGuests}
+                onAddToCart={async () => {
+                  const q = qty[selectedRoom.id] ?? 1;
+                  const errMsg = ensureDatesValid() || checkRoomConstraints(selectedRoom, q);
+                  if (errMsg) return alert(errMsg);
+                  try {
+                    await apiAddToCart(selectedRoom, q);
+                    addLocalCartMirror(hotel, selectedRoom, q);
+                    alert('Đã thêm vào giỏ hàng!');
+                  } catch (e) {
+                    const msg = (e as Error).message || '';
+                    if (msg.includes('→ 401'))
+                      alert('Bạn cần đăng nhập để thêm vào giỏ hàng (401).');
+                    else alert(`Thêm giỏ thất bại: ${msg}`);
+                  }
+                }}
+                onBookNow={async () => {
+                  const q = qty[selectedRoom.id] ?? 1;
+                  const errMsg = ensureDatesValid() || checkRoomConstraints(selectedRoom, q);
+                  if (errMsg) return alert(errMsg);
+                  try {
+                    await apiBookNow(selectedRoom, q);
+                    alert('Đặt phòng thành công!');
+                  } catch (e) {
+                    const msg = (e as Error).message || '';
+                    if (msg.includes('→ 401')) alert('Bạn cần đăng nhập để đặt phòng (401).');
+                    else alert(`Đặt phòng thất bại: ${msg}`);
+                  }
+                }}
+              />
+            ) : !hotel.rooms?.length ? (
               <div className="rounded-2xl border bg-white p-6 text-sm text-zinc-600">
                 Chưa có phòng khả dụng.
               </div>
@@ -339,24 +484,21 @@ export default function HotelDetailPage() {
                       const highlighted = highlightRoomId === r.id;
 
                       return (
-                        <>
+                        <Fragment key={r.id}>
                           <tr
                             id={`room-${r.id}`}
-                            key={r.id}
                             className={`border-t transition-colors ${highlighted ? 'bg-amber-50' : ''}`}
                           >
                             <td className="px-4 py-3">
                               <div className="font-medium text-zinc-900">{r.roomType}</div>
                               <div className="text-xs text-zinc-500">Hoàn huỷ linh hoạt</div>
-                              <button
-                                type="button"
-                                className="mt-1 text-xs text-blue-600 hover:underline"
-                                onClick={() =>
-                                  setExpanded((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
-                                }
+                              <a
+                                href={`?room=${r.id}`}
+                                className="mt-1 inline-block text-xs text-blue-600 hover:underline"
+                                title="Xem chi tiết phòng"
                               >
-                                {expanded[r.id] ? 'Ẩn chi tiết' : 'Chi tiết'}
-                              </button>
+                                Chi tiết
+                              </a>
                             </td>
                             <td className="px-4 py-3">{r.capacity} khách/phòng</td>
                             <td className="px-4 py-3">
@@ -382,18 +524,26 @@ export default function HotelDetailPage() {
                             </td>
                             <td className="px-4 py-3 font-semibold">{VND(rowTotal)}</td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex flex-wrap justify-end gap-2">
                                 <button
                                   type="button"
                                   className="rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-zinc-50 disabled:opacity-50"
                                   disabled={disableAll}
-                                  onClick={() => {
+                                  onClick={async () => {
                                     const dateErr = ensureDatesValid();
                                     if (dateErr) return alert(dateErr);
                                     const constraint = checkRoomConstraints(r, q);
                                     if (constraint) return alert(constraint);
-                                    addToCart(hotel, r, q);
-                                    alert('Đã thêm vào giỏ hàng!');
+                                    try {
+                                      await apiAddToCart(r, q);
+                                      addLocalCartMirror(hotel, r, q);
+                                      alert('Đã thêm vào giỏ hàng!');
+                                    } catch (e) {
+                                      const msg = (e as Error).message || '';
+                                      if (msg.includes('→ 401'))
+                                        alert('Bạn cần đăng nhập để thêm vào giỏ hàng (401).');
+                                      else alert(`Thêm giỏ thất bại: ${msg}`);
+                                    }
                                   }}
                                 >
                                   Thêm vào giỏ
@@ -402,22 +552,20 @@ export default function HotelDetailPage() {
                                   type="button"
                                   className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-50"
                                   disabled={disableAll}
-                                  onClick={() => {
+                                  onClick={async () => {
                                     const dateErr = ensureDatesValid();
                                     if (dateErr) return alert(dateErr);
                                     const constraint = checkRoomConstraints(r, q);
                                     if (constraint) return alert(constraint);
-                                    const total = r.pricePerNight * q * nights;
-                                    const tax = Math.round(total * 0.1);
-                                    alert(
-                                      `Đặt phòng: ${r.roomType}\n` +
-                                        `Số phòng: ${q}\n` +
-                                        `Giá/đêm: ${VND(r.pricePerNight)}\n` +
-                                        `${nights} đêm\n` +
-                                        `Tạm tính: ${VND(total)}\n` +
-                                        `Thuế & phí (10%): ${VND(tax)}\n` +
-                                        `Tổng: ${VND(total + tax)}`
-                                    );
+                                    try {
+                                      await apiBookNow(r, q);
+                                      alert('Đặt phòng thành công!');
+                                    } catch (e) {
+                                      const msg = (e as Error).message || '';
+                                      if (msg.includes('→ 401'))
+                                        alert('Bạn cần đăng nhập để đặt phòng (401).');
+                                      else alert(`Đặt phòng thất bại: ${msg}`);
+                                    }
                                   }}
                                 >
                                   Đặt ngay
@@ -425,25 +573,7 @@ export default function HotelDetailPage() {
                               </div>
                             </td>
                           </tr>
-
-                          {/* Row details (expand) */}
-                          {expanded[r.id] && (
-                            <tr className="bg-zinc-50/60">
-                              <td className="px-4 pb-4 pt-0 text-sm text-zinc-700" colSpan={7}>
-                                <div className="border-t px-1 pt-3">
-                                  <div className="mb-2 font-medium">
-                                    Chi tiết phòng: {r.roomType}
-                                  </div>
-                                  <ul className="list-disc space-y-1 pl-5 text-xs text-zinc-600">
-                                    <li>Sức chứa tối đa: {r.capacity} khách/phòng</li>
-                                    <li>Chính sách hoàn huỷ linh hoạt</li>
-                                    <li>Diện tích & tiện nghi: Wi-Fi, TV, điều hoà (mô tả mẫu)</li>
-                                  </ul>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </>
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -459,6 +589,7 @@ export default function HotelDetailPage() {
             </section>
           )}
 
+          {/* Map */}
           <section className="mt-8">
             <h2 className="mb-3 text-lg font-semibold">Vị trí</h2>
             <div className="overflow-hidden rounded-2xl border bg-white p-0 shadow-sm">
@@ -564,7 +695,9 @@ export default function HotelDetailPage() {
   );
 }
 
-/* ---------- UI Partials ---------- */
+/* =========================
+    Partials
+  ========================= */
 function HeroHeader({
   hotel,
   onShare,
@@ -624,6 +757,8 @@ function HeroHeader({
           </div>
         </div>
       </div>
+
+      {/* mini gallery */}
       <div className="grid grid-cols-2 gap-1 border-t sm:grid-cols-4">
         {['/hotel1.jpg', '/hotel2.jpg', '/hotel3.jpg', '/hotel4.jpg'].map((src, i) => (
           <div
@@ -788,6 +923,134 @@ function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
     <div className="mx-auto max-w-2xl rounded-2xl border bg-white p-8 text-center shadow-sm">
       <h2 className="text-lg font-semibold">{title}</h2>
       {subtitle && <p className="mt-1 text-sm text-zinc-600">{subtitle}</p>}
+    </div>
+  );
+}
+
+/* ===== Single-room detail panel ===== */
+function RoomDetailPanel({
+  hotel,
+  room,
+  qty,
+  setQty,
+  nights,
+  totalGuests,
+  onAddToCart,
+  onBookNow,
+}: {
+  hotel: ApiHotel;
+  room: ApiRoom;
+  qty: number;
+  setQty: (n: number) => void;
+  nights: number;
+  totalGuests: number;
+  onAddToCart: () => void;
+  onBookNow: () => void;
+}) {
+  const perNight = room.pricePerNight;
+  const subtotal = perNight * qty * nights;
+  const tax = Math.round(subtotal * 0.1);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      <div className="grid gap-4 p-4 md:grid-cols-3">
+        {/* (mock) image */}
+        <div className="md:col-span-1">
+          <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-zinc-100" />
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="text-xs text-zinc-500">Hạng phòng</div>
+              <h3 className="text-xl font-semibold text-zinc-900">{room.roomType}</h3>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                <Badge>
+                  <Users2 className="h-4 w-4" /> {room.capacity} khách/phòng
+                </Badge>
+                <Badge>
+                  <CheckCircle2 className="h-4 w-4" /> {room.availableRooms} phòng còn
+                </Badge>
+                <Badge>Hoàn huỷ linh hoạt</Badge>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-zinc-500">Giá/đêm</div>
+              <div className="text-2xl font-bold text-emerald-600">{VND(perNight)}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="rounded-xl bg-zinc-50 p-3 text-sm">
+              <div className="text-zinc-600">Số phòng</div>
+              <div className="mt-1">
+                <SmallNumberInput
+                  value={qty}
+                  onChange={(n) => setQty(Math.min(n, Math.max(1, room.availableRooms)))}
+                  min={1}
+                  max={Math.max(1, room.availableRooms)}
+                />
+              </div>
+            </div>
+            <div className="rounded-xl bg-zinc-50 p-3 text-sm">
+              <div className="text-zinc-600">Số đêm</div>
+              <div className="mt-1 font-semibold">{nights}</div>
+            </div>
+            <div className="rounded-xl bg-zinc-50 p-3 text-sm">
+              <div className="text-zinc-600">Tổng khách</div>
+              <div className="mt-1 font-semibold">{totalGuests}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border p-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span>Tạm tính</span>
+              <span className="font-semibold">{VND(subtotal)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-zinc-600">
+              <span>Thuế & phí (10%)</span>
+              <span>{VND(tax)}</span>
+            </div>
+            <div className="mt-2 border-t pt-2 text-base font-semibold">
+              Tổng: {VND(subtotal + tax)}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={onAddToCart}
+              className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-zinc-50"
+            >
+              Thêm vào giỏ
+            </button>
+            <button
+              onClick={onBookNow}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
+            >
+              Đặt ngay
+            </button>
+            <a
+              href="."
+              className="ml-auto rounded-xl border bg-white px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+              title="Xem các hạng phòng khác"
+            >
+              ← Xem tất cả phòng
+            </a>
+          </div>
+
+          <div className="mt-6">
+            <h4 className="font-medium">Tiện nghi nổi bật</h4>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {AMENITIES.slice(0, 6).map((a) => (
+                <div key={a.key} className="flex items-center gap-2 text-sm text-zinc-700">
+                  <a.icon className="h-4 w-4" />
+                  {a.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

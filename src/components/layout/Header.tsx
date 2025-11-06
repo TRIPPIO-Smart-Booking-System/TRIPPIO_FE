@@ -231,6 +231,14 @@ export default function Header() {
                         Hồ sơ của tôi
                       </Link>
                       <Link
+                        href="/admin"
+                        className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        <User className="mr-2 inline-block h-5 w-5" />
+                        Dashboard
+                      </Link>
+                      <Link
                         href="/cart"
                         className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
                         onClick={() => setDropdownOpen(false)}
@@ -239,7 +247,7 @@ export default function Header() {
                         Giỏ hàng
                       </Link>
                       <Link
-                        href="/transaction-history"
+                        href="/payment"
                         className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
                         onClick={() => setDropdownOpen(false)}
                       >

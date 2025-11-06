@@ -1,9 +1,7 @@
-// src/app/staff/show/new/page.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE } from '@/data/show.api';
 import { getAuth } from '@/lib/auth';
 
 /* =================== Types =================== */
@@ -30,7 +28,7 @@ type CreateShowResp = {
   modifiedDate?: string;
 };
 
-type Province = { code: number; name: string; name_en?: string };
+type Province = { code: number; name: string };
 type District = { code: number; name: string; province_code?: number };
 
 type VMPlace = { name: string; address?: string };
@@ -45,6 +43,17 @@ type VietMapRes =
     }
   | Array<{ name?: string; address?: string }>
   | Record<string, unknown>;
+
+/* =================== Config =================== */
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || '').replace(/\/+$/, ''); // không dấu / cuối
+const CREATE_SHOW_ENDPOINT = API_BASE ? `${API_BASE}/api/Show` : `/api/Show`;
+
+/* --- Upstream + Fallback nguồn hành chính --- */
+const PROVINCES_URL = 'https://provinces.open-api.vn/api/p';
+const PROVINCES_FALLBACK =
+  'https://raw.githubusercontent.com/madnh/hanhchinhvn/master/dist/tinh_tp.json';
+const DISTRICTS_FALLBACK =
+  'https://raw.githubusercontent.com/madnh/hanhchinhvn/master/dist/quan_huyen.json';
 
 /* ================ Utils ================ */
 function toIso(dtLocal: string): string | undefined {
@@ -61,13 +70,54 @@ function errorMessage(e: unknown): string {
 
 function isProvinceArray(x: unknown): x is Province[] {
   return (
-    Array.isArray(x) && x.every((i) => typeof i?.code === 'number' && typeof i?.name === 'string')
+    Array.isArray(x) &&
+    x.every((i) => typeof (i as any)?.code !== 'undefined' && typeof (i as any)?.name === 'string')
   );
 }
 function isDistrictArray(x: unknown): x is District[] {
   return (
-    Array.isArray(x) && x.every((i) => typeof i?.code === 'number' && typeof i?.name === 'string')
+    Array.isArray(x) &&
+    x.every((i) => typeof (i as any)?.code !== 'undefined' && typeof (i as any)?.name === 'string')
   );
+}
+
+/** fetch với timeout & AbortController (client) */
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit & { timeoutMs?: number } = {}
+) {
+  const { timeoutMs = 10000, ...rest } = init;
+  const ac = new AbortController();
+  const id = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, { ...rest, signal: ac.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+/* --- Chuẩn hoá từ fallback GitHub (string code → number) --- */
+type GHProvince = { code: string; name?: string; name_with_type?: string };
+type GHDistrict = { code: string; name?: string; name_with_type?: string; parent_code: string };
+
+function mapGHProvinces(obj: Record<string, GHProvince>): Province[] {
+  return Object.values(obj)
+    .map((p) => ({
+      code: Number(p.code),
+      name: (p.name_with_type || p.name || '').trim(),
+    }))
+    .filter((p) => p.code && p.name);
+}
+
+function mapGHDistricts(obj: Record<string, GHDistrict>): District[] {
+  return Object.values(obj)
+    .map((d) => ({
+      code: Number(d.code),
+      name: (d.name_with_type || d.name || '').trim(),
+      province_code: Number(d.parent_code),
+    }))
+    .filter((d) => d.code && d.name && Number.isFinite(d.province_code as number));
 }
 
 /* =================== Component =================== */
@@ -90,9 +140,7 @@ export default function StaffShowCreatePage() {
   // 👉 hàm quay về danh sách
   const goBackToList = () => router.push('/staff/show');
 
-  /* ---------- Provinces/Districts (Open API v1) ---------- */
-  const OPEN = 'https://provinces.open-api.vn/api';
-
+  /* ---------- Provinces/Districts (có fallback) ---------- */
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [provLoading, setProvLoading] = useState(true);
   const [provErr, setProvErr] = useState<string | null>(null);
@@ -113,28 +161,50 @@ export default function StaffShowCreatePage() {
     [districts, districtCode]
   );
 
-  // load provinces
+  // load provinces (try upstream → fallback GH raw)
   useEffect(() => {
     (async () => {
       setProvLoading(true);
       setProvErr(null);
       try {
-        const res = await fetch(`${OPEN}/p/`, { cache: 'force-cache' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw: unknown = await res.json();
-        const list = isProvinceArray((raw as { results?: unknown })?.results ?? raw)
-          ? ((raw as { results?: Province[] }).results ?? (raw as Province[]))
-          : [];
-        setProvinces(list.sort((a, b) => a.name.localeCompare(b.name, 'vi')));
+        // 1) upstream
+        try {
+          const res = await fetchWithTimeout(PROVINCES_URL, {
+            cache: 'no-store',
+            timeoutMs: 10000,
+            mode: 'cors' as RequestMode,
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const raw: unknown = await res.json();
+          const list = isProvinceArray((raw as any)?.results ?? raw)
+            ? ((raw as any)?.results ?? (raw as Province[]))
+            : [];
+
+          if (!list?.length) throw new Error('empty_upstream_provinces');
+
+          setProvinces(list.sort((a, b) => a.name.localeCompare(b.name, 'vi')));
+        } catch (e) {
+          // 2) fallback
+          const fb = await fetchWithTimeout(PROVINCES_FALLBACK, {
+            cache: 'no-store',
+            timeoutMs: 10000,
+            mode: 'cors' as RequestMode,
+          });
+          if (!fb.ok) throw new Error(`FB HTTP ${fb.status}`);
+          const obj = (await fb.json()) as Record<string, GHProvince>;
+          const list2 = mapGHProvinces(obj);
+          if (!list2.length) throw new Error('fallback_province_empty');
+          setProvinces(list2.sort((a, b) => a.name.localeCompare(b.name, 'vi')));
+        }
       } catch (e) {
-        setProvErr(errorMessage(e));
+        setProvErr('Không tải được danh sách Tỉnh/Thành (upstream SSL lỗi & fallback thất bại).');
       } finally {
         setProvLoading(false);
       }
     })();
   }, []);
 
-  // load districts by province
+  // load districts by province (dùng fallback GH raw để tránh SSL)
   async function loadDistrictsByProvince(code?: number) {
     setDistricts([]);
     setDistrictCode(undefined);
@@ -142,15 +212,18 @@ export default function StaffShowCreatePage() {
     setDistLoading(true);
     setDistErr(null);
     try {
-      const res = await fetch(`${OPEN}/p/${code}?depth=2`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: unknown = await res.json();
-      const list = isDistrictArray((data as { districts?: unknown })?.districts)
-        ? ((data as { districts?: District[] }).districts as District[])
-        : [];
+      const fb = await fetchWithTimeout(DISTRICTS_FALLBACK, {
+        cache: 'no-store',
+        timeoutMs: 10000,
+        mode: 'cors' as RequestMode,
+      });
+      if (!fb.ok) throw new Error(`FB HTTP ${fb.status}`);
+      const obj = (await fb.json()) as Record<string, GHDistrict>;
+      const all = mapGHDistricts(obj);
+      const list = all.filter((d) => Number(d.province_code) === Number(code));
       setDistricts(list.sort((a, b) => a.name.localeCompare(b.name, 'vi')));
     } catch (e) {
-      setDistErr(errorMessage(e));
+      setDistErr('Không tải được Quận/Huyện (fallback).');
     } finally {
       setDistLoading(false);
     }
@@ -184,7 +257,7 @@ export default function StaffShowCreatePage() {
         const url = `${VM_BASE}?text=${encodeURIComponent(contextual)}&apikey=${encodeURIComponent(
           VM_KEY
         )}&limit=8`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url, { timeoutMs: 10000 });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: VietMapRes = await res.json();
 
@@ -277,7 +350,7 @@ export default function StaffShowCreatePage() {
       };
 
       const { accessToken } = getAuth();
-      const res = await fetch(`${API_BASE}/api/Show`, {
+      const res = await fetchWithTimeout(CREATE_SHOW_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -285,6 +358,7 @@ export default function StaffShowCreatePage() {
         },
         credentials: 'include',
         body: JSON.stringify(body),
+        timeoutMs: 15000,
       });
 
       if (!res.ok) {
@@ -292,8 +366,7 @@ export default function StaffShowCreatePage() {
         throw new Error(text || `HTTP ${res.status}`);
       }
 
-      // Nếu không dùng dữ liệu trả về, chỉ cần await để tránh ESLint "unused".
-      await res.json(); // hoặc: void (await res.json());
+      await res.json().catch(() => ({}) as CreateShowResp);
 
       setOkMsg('Tạo show thành công!');
       setTimeout(() => {
@@ -314,12 +387,12 @@ export default function StaffShowCreatePage() {
         className="absolute inset-0 -z-10 bg-gradient-to-br from-sky-100 via-cyan-100 to-teal-100"
       />
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <header className="mb-6 flex items-center justify-between">
+        <header className="mb-6 flex items-center justify_between">
           <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow backdrop-blur">
             <h1 className="text-2xl font-extrabold tracking-tight text-sky-800">🎟️ Tạo Show mới</h1>
             <p className="mt-1 text-sky-900/80 text-sm">
-              Chọn <b>Tỉnh/Thành</b> (mới nhất), <b>Quận/Huyện</b> và gõ <b>Đường/Địa điểm</b>. Có
-              gợi ý nếu cấu hình VietMap API key.
+              Chọn <b>Tỉnh/Thành</b>, <b>Quận/Huyện</b> và gõ <b>Đường/Địa điểm</b>. Có gợi ý nếu
+              cấu hình VietMap API key.
             </p>
           </div>
           <button
@@ -413,10 +486,10 @@ export default function StaffShowCreatePage() {
               required
               disabled={!provinceCode}
             />
-            {VM_KEY && streetLoading && (
+            {process.env.NEXT_PUBLIC_VIETMAP_API_KEY && streetLoading && (
               <div className="mt-1 text-xs text-sky-700">Đang gợi ý…</div>
             )}
-            {VM_KEY && !!streetOpts.length && (
+            {process.env.NEXT_PUBLIC_VIETMAP_API_KEY && !!streetOpts.length && (
               <div className="mt-1 max-h-56 overflow-auto rounded-xl border border-sky-200/70 bg-white/90 shadow">
                 {streetOpts.map((opt) => (
                   <button
@@ -438,7 +511,7 @@ export default function StaffShowCreatePage() {
                 ))}
               </div>
             )}
-            {!VM_KEY && (
+            {!process.env.NEXT_PUBLIC_VIETMAP_API_KEY && (
               <p className="mt-1 text-xs text-sky-700">
                 (Tuỳ chọn) Bật gợi ý bằng cách thêm{' '}
                 <code className="rounded bg-sky-100 px-1">NEXT_PUBLIC_VIETMAP_API_KEY</code> vào

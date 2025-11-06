@@ -4,18 +4,25 @@
 import Link from 'next/link';
 import { ApiShow, formatDateTime, formatMoney } from '@/data/show.api';
 
-export default function ShowCard({
-  show,
-  currency = 'VND',
-}: {
+type Props = {
   show: ApiShow;
   currency?: 'VND' | 'USD';
-}) {
+  /** Optional controlled expand state (for “chỉ mở 1 card”) */
+  isOpen?: boolean;
+  /** Optional toggle handler from parent */
+  onToggle?: () => void;
+};
+
+export default function ShowCard({ show, currency = 'VND', isOpen, onToggle }: Props) {
   const soldOut = show.availableTickets <= 0;
 
   return (
-    <article className="group overflow-hidden rounded-2xl border bg-white shadow hover:shadow-lg transition">
-      <div className="relative h-28 w-full bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-400">
+    <article className="group overflow-hidden rounded-2xl border bg-white shadow transition hover:shadow-lg">
+      {/* Header / Banner */}
+      <div
+        className="relative h-28 w-full bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-400"
+        role="presentation"
+      >
         <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-sky-700 shadow">
           {formatMoney(show.price, currency)}/vé
         </div>
@@ -24,8 +31,25 @@ export default function ShowCard({
         </div>
       </div>
 
+      {/* Body */}
       <div className="space-y-2 p-4">
-        <h3 className="line-clamp-2 text-lg font-semibold">{show.name}</h3>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="line-clamp-2 text-lg font-semibold">{show.name}</h3>
+
+          {/* Toggle button (optional, only if onToggle provided) */}
+          {onToggle && (
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-expanded={!!isOpen}
+              aria-controls={`show-card-details-${show.id}`}
+              className="ml-auto inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-sm text-sky-700 hover:bg-sky-50"
+              title={isOpen ? 'Thu gọn' : 'Mở chi tiết'}
+            >
+              <span className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}>⌄</span>
+            </button>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
           <span className="inline-flex items-center gap-2">
@@ -35,6 +59,27 @@ export default function ShowCard({
             📍 {show.location}, {show.city}
           </span>
         </div>
+
+        {/* Collapsible details (rendered only when isOpen is defined -> controlled mode) */}
+        {typeof isOpen === 'boolean' && (
+          <div
+            id={`show-card-details-${show.id}`}
+            className={`overflow-hidden transition-[max-height,opacity] duration-300 ${
+              isOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="mt-2 rounded-xl border bg-zinc-50/70 p-3 text-sm text-zinc-700">
+              <div>
+                <span className="font-medium text-sky-800">Mô tả nhanh: </span>
+                {show.description || 'Chưa có mô tả.'}
+              </div>
+              <div className="mt-1">
+                <span className="font-medium text-sky-800">Địa điểm chi tiết: </span>
+                {show.location}, {show.city}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="pt-2">
           <Link

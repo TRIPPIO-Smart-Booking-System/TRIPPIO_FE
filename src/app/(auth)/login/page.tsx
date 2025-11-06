@@ -15,7 +15,7 @@ type UserInfo = {
   isEmailVerified?: boolean;
   emailConfirmed?: boolean;
   isFirstLogin?: boolean;
-  roles?: string[];
+  roles?: string[] | string; // cho phép string hoặc string[]
   [k: string]: unknown;
 };
 
@@ -24,7 +24,6 @@ type LoginResp = {
   message?: string;
   requireEmailVerification?: boolean;
   requirePhoneVerification?: boolean;
-  // BE của bạn trả token trong loginResponse.*
   loginResponse?: {
     accessToken: string;
     refreshToken?: string;
@@ -35,7 +34,7 @@ type LoginResp = {
 
 type LoginBase = {
   isSuccess?: boolean;
-  email?: string; // phòng khi BE trả thêm
+  email?: string;
   user?: UserInfo;
 };
 
@@ -78,7 +77,7 @@ function persistAuth({
   user?: UserInfo;
 }) {
   // Prefer user.id from response; fallback to JWT payload (id/sub)
-  let userId: string | undefined = user?.id;
+  let userId: string | undefined = user?.id as string | undefined;
   if (!userId) {
     const payload = parseJwt<{ id?: string; sub?: string; email?: string }>(accessToken);
     userId = payload?.id || payload?.sub;
@@ -89,7 +88,7 @@ function persistAuth({
     localStorage.setItem('authToken', accessToken); // for places that read 'authToken'
     if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
     if (userId) localStorage.setItem('userId', userId);
-    if (user?.email) localStorage.setItem('userEmail', user.email);
+    if (user?.email) localStorage.setItem('userEmail', user.email as string);
   } catch {
     // ignore quota / private mode
   }
@@ -102,6 +101,37 @@ function extractTokens(d: any): { accessToken?: string; refreshToken?: string; u
   const refreshToken = d?.loginResponse?.refreshToken || d?.refreshToken;
   const user = d?.loginResponse?.user || d?.user;
   return { accessToken, refreshToken, user };
+}
+
+/* --------- Role helpers --------- */
+function normalizeRoles(rs: unknown): string[] {
+  const arr = Array.isArray(rs) ? rs : typeof rs === 'string' ? [rs] : [];
+  return arr
+    .map((r) => String(r || '').toLowerCase())
+    .map((r) => (r.startsWith('role_') ? r.slice(5) : r));
+}
+
+function extractRoles({
+  accessToken,
+  user,
+}: {
+  accessToken?: string;
+  user?: { roles?: unknown };
+}): string[] {
+  // Ưu tiên roles từ response
+  let roles = normalizeRoles(user?.roles);
+  if (roles.length) return roles;
+
+  // Fallback: đọc từ JWT (roles hoặc role)
+  const payload = parseJwt<{ roles?: unknown; role?: unknown }>(accessToken);
+  roles = normalizeRoles(payload?.roles ?? (payload?.role ? [payload.role] : []));
+  return roles;
+}
+
+function pickRedirectByRole(roles: string[], customerFallback = '/homepage') {
+  if (roles.includes('admin')) return '/admin';
+  if (roles.includes('staff')) return '/staff';
+  return customerFallback; // customer/user
 }
 
 /* ---------------------------- Spinner ---------------------------- */
@@ -157,6 +187,12 @@ export default function LoginForm() {
     [form, loading]
   );
 
+  // 👇 Forgot password URL (prefill email/phone nếu người dùng đã gõ)
+  const forgotHref = useMemo(
+    () => `/forgot-password?email=${encodeURIComponent(form.usernameOrPhone || '')}`,
+    [form.usernameOrPhone]
+  );
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isDisabled) return;
@@ -182,8 +218,8 @@ export default function LoginForm() {
         setAuth({
           accessToken,
           refreshToken,
-          userId: user?.id ?? decodedId, // << QUAN TRỌNG
-          email: user?.email,
+          userId: (user?.id as string) ?? decodedId, // << QUAN TRỌNG
+          email: user?.email as string | undefined,
         });
         persistAuth({ accessToken, refreshToken, user });
 
@@ -195,35 +231,48 @@ export default function LoginForm() {
           return;
         }
 
-        // Báo cho Header/Layout biết auth đã đổi
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:changed'));
+        // Lấy roles và lưu lại cho guard dùng
+        const roles = extractRoles({ accessToken, user });
+        try {
+          localStorage.setItem('roles', JSON.stringify(roles));
+        } catch {}
 
-        // Điều hướng theo redirect nếu có
+        // Chọn màn theo role (ưu tiên role)
+        const roleTarget = pickRedirectByRole(roles, '/homepage');
+
+        // Nếu muốn ưu tiên ?redirect (tùy bạn bật/tắt):
+        const params = new URLSearchParams(window.location.search);
+        const redirectParam = params.get('redirect');
+        const finalTarget = redirectParam || roleTarget;
+
+        // 1) Điều hướng NGAY
+        router.replace(finalTarget);
+        router.refresh();
+
+        // 2) Phát auth:changed SAU điều hướng (tránh hủy navigation)
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth:changed'));
+          }
+        }, 50);
+
+        return;
+      }
+
+      // Không có token trong body -> có thể BE set cookie HttpOnly + isSuccess (KHÔNG dùng /me nữa)
+      if (data?.isSuccess) {
+        try {
+          localStorage.setItem('session', '1');
+        } catch {}
         const params = new URLSearchParams(window.location.search);
         const to = params.get('redirect') || '/homepage';
         router.replace(to);
         router.refresh();
-        return;
-      }
-
-      // Không có token trong body -> có thể BE set cookie HttpOnly + isSuccess
-      if (data?.isSuccess) {
-        try {
-          const meRes = await fetch('/api/admin/auth/me', {
-            method: 'GET',
-            credentials: 'include',
-          });
-          if (meRes.ok) {
-            localStorage.setItem('session', '1'); // flag nhẹ để guard qua
-            if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:changed'));
-            const params = new URLSearchParams(window.location.search);
-            const to = params.get('redirect') || '/homepage';
-            router.replace(to);
-            router.refresh();
-            return;
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth:changed'));
           }
-        } catch {}
-        setErr('Đăng nhập thành công nhưng không nhận được token. Kiểm tra cấu hình BE/proxy.');
+        }, 50);
         return;
       }
 
@@ -275,6 +324,7 @@ export default function LoginForm() {
                       value={form.usernameOrPhone}
                       onChange={(e) => setForm((s) => ({ ...s, usernameOrPhone: e.target.value }))}
                       required
+                      autoComplete="username email"
                     />
                     <span className="pointer-events-none absolute inset-y-0 left-3 my-auto inline-flex h-6 w-6 items-center justify-center text-sky-600/80 dark:text-sky-400/80">
                       <svg
@@ -296,7 +346,17 @@ export default function LoginForm() {
                     <label className="block text-sm font-medium text-neutral-800 dark:text-neutral-200">
                       Mật khẩu
                     </label>
+
+                    {/* 👇 Forgot password link */}
+                    <a
+                      href={forgotHref}
+                      className="text-sm font-medium text-sky-600 hover:underline underline-offset-4"
+                      title="Quên mật khẩu?"
+                    >
+                      Quên mật khẩu?
+                    </a>
                   </div>
+
                   <div className="relative">
                     <input
                       type={showPwd ? 'text' : 'password'}
@@ -305,6 +365,7 @@ export default function LoginForm() {
                       value={form.password}
                       onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
                       required
+                      autoComplete="current-password"
                     />
                     <button
                       type="button"
@@ -330,7 +391,7 @@ export default function LoginForm() {
                 <button
                   type="submit"
                   disabled={isDisabled}
-                  className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-neutral-900 px-4 py-3 font-semibold text-white shadow-lg shadow-neutral-900/20 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-neutral-900"
+                  className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-neutral-900 px-4 py-3 font-semibold text-white shadow-lg shadow-neutral-900/20 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 dark:bg_white dark:text-neutral-900"
                 >
                   <span className="absolute inset-0 -z-10 animate-[pulse_3s_ease-in-out_infinite] bg-[conic-gradient(from_180deg_at_50%_50%,#22d3ee_0%,#f472b6_25%,#f59e0b_50%,#22c55e_75%,#22d3ee_100%)] opacity-0 blur-xl transition group-hover:opacity-40" />
                   {loading ? (
@@ -343,7 +404,7 @@ export default function LoginForm() {
                   )}
                 </button>
 
-                <p className="pt-1.5 text-center text-sm text-neutral-600 dark:text-neutral-300">
+                <p className="pt-1.5 text_center text-sm text-neutral-600 dark:text-neutral-300">
                   Chưa có tài khoản?{' '}
                   <a
                     href="/register"

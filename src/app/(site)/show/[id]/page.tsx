@@ -4,8 +4,9 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
 
+// ===== Types =====
 type ApiShow = {
   id: string;
   name: string;
@@ -13,11 +14,15 @@ type ApiShow = {
   city: string;
   startDate: string;
   endDate: string;
-  price: number;
+  price: number; // đơn giá (nguồn data master của show)
   availableTickets: number;
   dateCreated: string;
   modifiedDate: string | null;
 };
+
+// ===== Helpers =====
+const USER_ID_KEY = 'userId';
+const AUTH_TOKEN_KEY = 'authToken';
 
 function money(n: number, currency: 'VND' | 'USD' = 'VND') {
   return n.toLocaleString(currency === 'VND' ? 'vi-VN' : 'en-US', {
@@ -35,6 +40,48 @@ function dt(s: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+function getUserId(): string | null {
+  try {
+    return localStorage.getItem(USER_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+function authHeaders(): HeadersInit {
+  const t = getAuthToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+async function postJSON<T = unknown>(url: string, data?: unknown, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...(init?.headers || {}),
+    },
+    body: data ? JSON.stringify(data) : undefined,
+    ...init,
+  });
+  if (!res.ok) {
+    let detail = '';
+    try {
+      detail = await res.text();
+    } catch {}
+    throw new Error(`POST ${url} → ${res.status}${detail ? ` | ${detail}` : ''}`);
+  }
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return {} as T;
+  }
 }
 
 export default function ShowDetailPage() {
@@ -78,6 +125,43 @@ export default function ShowDetailPage() {
 
   const soldOut = (show?.availableTickets ?? 0) <= 0;
   const total = useMemo(() => (show ? show.price * qty : 0), [show, qty]);
+
+  async function addToCart() {
+    if (!show) return;
+    const userId = getUserId();
+    const token = getAuthToken();
+    if (!userId || !token) {
+      alert('Bạn cần đăng nhập trước khi thêm vào giỏ hàng.');
+      return;
+    }
+    if (qty < 1) {
+      alert('Số lượng phải ≥ 1');
+      return;
+    }
+    if (qty > show.availableTickets) {
+      alert(`Vượt quá số vé còn lại (${show.availableTickets}).`);
+      return;
+    }
+
+    try {
+      // ✅ GỬI unitPrice cho BE (đồng bộ schema Basket)
+      await postJSON(`${API_BASE}/api/Basket/${userId}/items`, {
+        productId: show.id,
+        quantity: qty,
+        unitPrice: show.price, // <— KHÁC BIỆT CHÍNH
+        // price: show.price,   // (tuỳ chọn) backward-compat
+      });
+      window.dispatchEvent(new CustomEvent('basket:changed'));
+      alert('Đã thêm vào giỏ hàng!');
+    } catch (e) {
+      const msg = (e as Error).message || '';
+      if (msg.includes('→ 401')) {
+        alert('Phiên đăng nhập hết hạn hoặc thiếu token (401). Vui lòng đăng nhập lại.');
+      } else {
+        alert(`Thêm giỏ thất bại: ${msg}`);
+      }
+    }
+  }
 
   if (loading) return <div className="mx-auto max-w-7xl p-6">Đang tải show…</div>;
   if (is404) return <div className="mx-auto max-w-7xl p-6">Không tìm thấy sự kiện.</div>;
@@ -145,9 +229,13 @@ export default function ShowDetailPage() {
                 <Info label="Địa điểm" value={`${show.location}, ${show.city}`} />
                 <Info
                   label="Tình trạng vé"
-                  value={soldOut ? 'Hết vé' : `${show.availableTickets} vé còn`}
+                  value={
+                    (show.availableTickets ?? 0) <= 0 ? 'Hết vé' : `${show.availableTickets} vé còn`
+                  }
                   pillClass={
-                    soldOut ? 'bg-zinc-100 text-zinc-600' : 'bg-emerald-50 text-emerald-700'
+                    (show.availableTickets ?? 0) <= 0
+                      ? 'bg-zinc-100 text-zinc-600'
+                      : 'bg-emerald-50 text-emerald-700'
                   }
                 />
               </div>
@@ -173,7 +261,6 @@ export default function ShowDetailPage() {
                   className="h-9 rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-sky-200"
                 >
                   <option value="VND">VND</option>
-                  <option value="USD">USD</option>
                 </select>
               </div>
 
@@ -215,16 +302,25 @@ export default function ShowDetailPage() {
               <button
                 type="button"
                 disabled={soldOut}
-                className={`mt-4 h-11 w-full rounded-xl font-semibold ${
+                className={`mt-3 h-11 w-full rounded-xl font-semibold ${
                   soldOut
                     ? 'cursor-not-allowed bg-zinc-200 text-zinc-500'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
+                onClick={addToCart}
+              >
+                {soldOut ? 'Hết vé' : 'Thêm vào giỏ hàng'}
+              </button>
+
+              <button
+                type="button"
+                className="mt-2 h-11 w-full rounded-xl border font-semibold hover:bg-zinc-50"
                 onClick={() =>
                   alert(`Đặt ${qty} vé cho "${show.name}"\nTổng: ${money(total, currency)}`)
                 }
+                disabled={soldOut}
               >
-                {soldOut ? 'Hết vé' : 'Đặt vé ngay'}
+                {soldOut ? 'Không thể đặt' : 'Đặt vé ngay'}
               </button>
 
               <p className="mt-2 text-center text-xs text-zinc-500">
