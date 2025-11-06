@@ -129,7 +129,7 @@ export default function StaffShowsPage() {
             <p className="mt-0.5 text-sm text-sky-900/80">Xem • Lọc • Sửa • Xoá — nhanh và gọn.</p>
           </div>
           <a
-            href="/staff/shown/new" // nếu route của bạn là /staff/show/new thì sửa lại nhé
+            href="/staff/show/new" // nếu route của bạn là /staff/show/new thì sửa lại nhé
             className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-sky-500/20 ring-1 ring-white/20 hover:brightness-105"
           >
             <svg

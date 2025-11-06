@@ -1,43 +1,17 @@
+// ./src/app/(site)/hotel/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import HotelSearchBar, { HotelSearchQuery } from '@/components/hotel/HotelSearchBar';
 import HotelCard from '@/components/hotel/HotelCard';
+import type { ApiHotel, ApiRoom } from '@/data/hotel.types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
 
 type SortKey = 'popularity' | 'priceAsc' | 'priceDesc' | 'ratingDesc';
 type ViewMode = 'grid' | 'list';
 
-export type ApiRoom = {
-  id: string;
-  hotelId: string;
-  roomType: string;
-  pricePerNight: number;
-  capacity: number;
-  availableRooms: number;
-  dateCreated: string;
-  modifiedDate: string | null;
-};
-
-export type ApiHotel = {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  country: string;
-  description: string;
-  stars: number;
-  dateCreated: string;
-  modifiedDate: string | null;
-  rooms?: ApiRoom[];
-};
-
-/* ========= Helpers ========= */
-type HotelView = ApiHotel & {
-  minPrice?: number;
-  rating?: number;
-};
+/* ================= Helpers ================= */
 
 function pickNum(o: unknown, key: string): number | undefined {
   if (o && typeof o === 'object') {
@@ -58,10 +32,28 @@ function computeMinPriceFromRooms(rooms?: ApiRoom[]): number | undefined {
   return Number.isFinite(min) ? min : undefined;
 }
 
-function normalizeHotel(h: ApiHotel): HotelView {
+/** Cho phép thiếu rooms/modifiedDate để normalize; tránh dùng any */
+type LooseHotel = Omit<ApiHotel, 'rooms' | 'modifiedDate'> & {
+  rooms?: ApiRoom[] | null;
+  modifiedDate?: string | null;
+};
+
+/** HotelView là "superset" của ApiHotel và chắc chắn rooms, modifiedDate là kiểu chặt */
+type HotelView = Omit<ApiHotel, 'modifiedDate' | 'rooms'> & {
+  modifiedDate: string; // ép string để khớp chặt chẽ với HotelCard
+  rooms: ApiRoom[]; // luôn là mảng (không undefined)
+  minPrice?: number;
+  rating?: number;
+};
+
+function normalizeHotel(h: LooseHotel): HotelView {
+  // rooms luôn là mảng
+  const rooms: ApiRoom[] = Array.isArray(h.rooms) ? h.rooms : [];
+
   const rating =
     pickNum(h, 'rating') ?? pickNum(h, 'stars') ?? pickNum(h, 'score') ?? pickNum(h, 'reviewScore');
-  const minFromRooms = computeMinPriceFromRooms(h.rooms);
+
+  const minFromRooms = computeMinPriceFromRooms(rooms);
   const minPrice =
     minFromRooms ??
     pickNum(h as unknown, 'minPrice') ??
@@ -69,10 +61,17 @@ function normalizeHotel(h: ApiHotel): HotelView {
     pickNum(h as unknown, 'lowestPrice') ??
     pickNum(h as unknown, 'fromPrice');
 
-  return { ...h, minPrice, rating };
+  return {
+    ...h,
+    rooms,
+    modifiedDate: h.modifiedDate ?? '', // ép về string
+    minPrice,
+    rating,
+  };
 }
 
-/* ========= Page ========= */
+/* ================= Page ================= */
+
 export default function HotelsPage() {
   const [query, setQuery] = useState<HotelSearchQuery>({
     city: '',
@@ -94,15 +93,26 @@ export default function HotelsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   useEffect(() => {
+    const ac = new AbortController();
+
     (async () => {
       try {
         setLoading(true);
         setErr(null);
 
         const [resHotels, resRooms] = await Promise.all([
-          fetch(`${API_BASE}/api/Hotel`, { cache: 'no-store' }),
-          fetch(`${API_BASE}/api/Room`, { cache: 'no-store' }),
+          fetch(`${API_BASE}/api/Hotel`, {
+            cache: 'no-store',
+            signal: ac.signal,
+            headers: { Accept: 'application/json' },
+          }),
+          fetch(`${API_BASE}/api/Room`, {
+            cache: 'no-store',
+            signal: ac.signal,
+            headers: { Accept: 'application/json' },
+          }),
         ]);
+
         if (!resHotels.ok) throw new Error(`Hotel HTTP ${resHotels.status}`);
         if (!resRooms.ok) throw new Error(`Room HTTP ${resRooms.status}`);
 
@@ -120,39 +130,47 @@ export default function HotelsPage() {
           bucket.push(r);
           mapRooms.set(r.hotelId, bucket);
         }
-        // sort rooms in each hotel by price ascending
+        // sort each bucket by price
         for (const arr of mapRooms.values()) {
           arr.sort((a, b) => (a.pricePerNight ?? 0) - (b.pricePerNight ?? 0));
         }
 
-        // attach rooms
-        const attached: ApiHotel[] = hotelsArr.map((h) => ({
+        // attach rooms (luôn là mảng)
+        const attached: LooseHotel[] = hotelsArr.map((h) => ({
           ...h,
           rooms: mapRooms.get(h.id) ?? [],
         }));
 
-        setHotels(attached.map(normalizeHotel));
+        if (!ac.signal.aborted) {
+          setHotels(attached.map(normalizeHotel));
+        }
       } catch (e: unknown) {
-        setErr(e instanceof Error ? e.message : 'Fetch failed');
+        if (!ac.signal.aborted) {
+          setErr(e instanceof Error ? e.message : 'Fetch failed');
+        }
       } finally {
-        setLoading(false);
+        if (!ac.signal.aborted) {
+          setLoading(false);
+        }
       }
     })();
+
+    return () => ac.abort();
   }, []);
 
-  /* —— Aggregates —— */
   const cityCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     hotels.forEach((h) => {
-      counts[h.city] = (counts[h.city] || 0) + 1;
+      const city = (h.city ?? 'Khác').trim();
+      counts[city] = (counts[city] || 0) + 1;
     });
     return counts;
   }, [hotels]);
 
-  const filteredBase = useMemo(
-    () => hotels.filter((h) => !query.city || h.city === query.city),
-    [hotels, query.city]
-  );
+  const filteredBase = useMemo(() => {
+    const norm = (s: string) => (s ?? '').trim().toLowerCase();
+    return hotels.filter((h) => !query.city || norm(h.city) === norm(query.city));
+  }, [hotels, query.city]);
 
   const filtered = useMemo(() => {
     const copy = [...filteredBase];
@@ -172,7 +190,12 @@ export default function HotelsPage() {
       case 'ratingDesc':
         copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
         break;
+      case 'popularity':
       default:
+        // fallback: ưu tiên rating cao → giá thấp
+        copy.sort(
+          (a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (a.minPrice ?? 1e15) - (b.minPrice ?? 1e15)
+        );
         break;
     }
     return copy;
@@ -181,7 +204,6 @@ export default function HotelsPage() {
   const onSearch = (q: HotelSearchQuery) => setQuery(q);
   const total = filtered.length;
 
-  /* ========= UI ========= */
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white">
       {/* Header */}
@@ -261,7 +283,9 @@ export default function HotelsPage() {
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}
-                  className={`px-3 py-1 text-sm ${viewMode === 'list' ? 'rounded-l-xl bg-sky-600 text-white' : 'text-zinc-700'}`}
+                  className={`px-3 py-1 text-sm ${
+                    viewMode === 'list' ? 'rounded-l-xl bg-sky-600 text-white' : 'text-zinc-700'
+                  }`}
                   aria-pressed={viewMode === 'list'}
                   title="Dạng danh sách"
                 >
@@ -270,7 +294,9 @@ export default function HotelsPage() {
                 <button
                   type="button"
                   onClick={() => setViewMode('grid')}
-                  className={`px-3 py-1 text-sm ${viewMode === 'grid' ? 'rounded-r-xl bg-sky-600 text-white' : 'text-zinc-700'}`}
+                  className={`px-3 py-1 text-sm ${
+                    viewMode === 'grid' ? 'rounded-r-xl bg-sky-600 text-white' : 'text-zinc-700'
+                  }`}
                   aria-pressed={viewMode === 'grid'}
                   title="Dạng lưới"
                 >
@@ -283,10 +309,16 @@ export default function HotelsPage() {
       </header>
 
       {/* Content */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"
+        aria-busy={loading}
+        aria-live="polite"
+      >
         {loading && (
           <div
-            className={`${viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'}`}
+            className={`${
+              viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'
+            }`}
           >
             <SkeletonCard />
             <SkeletonCard />
@@ -314,7 +346,7 @@ export default function HotelsPage() {
                     checkIn={query.checkIn}
                     checkOut={query.checkOut}
                     adults={query.adults}
-                    children={query.children}
+                    childrenCount={query.children}
                     roomsNeeded={query.rooms}
                   />
                 ))}
@@ -328,7 +360,7 @@ export default function HotelsPage() {
                       checkIn={query.checkIn}
                       checkOut={query.checkOut}
                       adults={query.adults}
-                      children={query.children}
+                      childrenCount={query.children}
                       roomsNeeded={query.rooms}
                     />
                   </div>
@@ -354,7 +386,6 @@ export default function HotelsPage() {
   );
 }
 
-/* ====== Skeleton ====== */
 function SkeletonCard() {
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">

@@ -52,18 +52,12 @@ function authHeaders(): HeadersInit {
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Đã xảy ra lỗi';
 }
-
-// Chuẩn hoá value từ <input type="datetime-local"> thành "YYYY-MM-DDTHH:mm:ss" (không Z)
 function toLocalNoTZ(dtLocal: string): string | undefined {
   if (!dtLocal) return undefined;
-  // input có dạng "YYYY-MM-DDTHH:mm" hoặc "YYYY-MM-DDTHH:mm:ss"
   return dtLocal.length === 16 ? `${dtLocal}:00` : dtLocal;
 }
-
-// Đọc lỗi .NET gọn gàng + log để debug
 async function readError(res: Response): Promise<string> {
   const text = await res.text().catch(() => '');
-  console.error('POST /TransportTrip FAILED', res.status, text); // <-- debug log
   try {
     const j = JSON.parse(text) as {
       title?: string;
@@ -82,12 +76,18 @@ async function readError(res: Response): Promise<string> {
     return text || `HTTP ${res.status}`;
   }
 }
-
 function saysTransportRequired(msg: string) {
   return /(^|[\s:])Transport\b.*required/i.test(msg);
 }
 function saysTransportTripRequired(msg: string) {
   return /transportTrip\b.*required/i.test(msg);
+}
+function iconByType(t?: string) {
+  if (!t) return '🚗';
+  if (/air/i.test(t)) return '✈️';
+  if (/train/i.test(t)) return '🚆';
+  if (/bus/i.test(t)) return '🚌';
+  return '🚗';
 }
 
 /* ==================== Page ==================== */
@@ -100,7 +100,6 @@ export default function TransportTripCreatePage() {
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [infoErr, setInfoErr] = useState<string | null>(null);
 
-  // fetch transport info (để hiển thị header + có sẵn data fallback embed)
   useEffect(() => {
     if (!transportId) return;
     (async () => {
@@ -150,7 +149,6 @@ export default function TransportTripCreatePage() {
   const [destProvinceCode, setDestProvinceCode] = useState<number | undefined>();
   const [depCustom, setDepCustom] = useState('');
   const [destCustom, setDestCustom] = useState('');
-
   const depName = useMemo(
     () => provinces.find((p) => p.code === depProvinceCode)?.name,
     [provinces, depProvinceCode]
@@ -227,7 +225,6 @@ export default function TransportTripCreatePage() {
       const toCity = (destProvinceCode === -1 ? destCustom : (destName ?? '')).trim();
       if (fromCity === toCity) throw new Error('Điểm đi và điểm đến phải khác nhau');
 
-      // 1) thử dạng BE yêu cầu wrapper: { transportTrip: { ... } }
       const baseRoot: TripRoot = {
         transportTrip: {
           transportId,
@@ -244,8 +241,6 @@ export default function TransportTripCreatePage() {
         await postTrip(baseRoot);
       } catch (e) {
         const msg = errMsg(e);
-
-        // 2) nếu BE kêu thiếu Transport => embed navigation & retry
         if (saysTransportRequired(msg) && transport) {
           const retryRoot: TripRoot = {
             transportTrip: {
@@ -262,15 +257,14 @@ export default function TransportTripCreatePage() {
           };
           await postTrip(retryRoot);
         } else if (saysTransportTripRequired(msg)) {
-          // (phòng khi lần đầu bạn vẫn gửi body không có wrapper)
           await postTrip(baseRoot);
         } else {
           throw e;
         }
       }
 
-      setOkMsg('Tạo Trip thành công!');
-      // reset form
+      setOkMsg('✅ Tạo Trip thành công!');
+      // reset nhẹ
       setDepartureTime('');
       setArrivalTime('');
       setPrice('');
@@ -285,13 +279,36 @@ export default function TransportTripCreatePage() {
   /* ==================== UI ==================== */
   return (
     <div className="relative min-h-screen w-full overflow-x-clip">
+      {/* dreamy gradient background */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-sky-100/60 via-teal-100/40 to-transparent"
+        className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_600px_at_85%_-10%,rgba(56,189,248,0.25),transparent_60%),radial-gradient(900px_500px_at_0%_0%,rgba(45,212,191,0.25),transparent_60%),linear-gradient(180deg,#ecfeff_0%,#f0fdfa_100%)]"
       />
-      <div className="mx-auto wull max-w-3xl px-4 pb-16 pt-8">
-        <header className="mb-5">
-          <div className="rounded-3xl border border-white/60 bg-white/90 p-5 shadow-xl backdrop-blur">
+      <div className="mx-auto w-full max-w-4xl px-4 pb-20 pt-8">
+        {/* Breadcrumb / Topbar */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <a
+            href="/staff"
+            className="rounded-xl border border-white/60 bg-white/80 px-3 py-1.5 text-sm font-semibold text-sky-700 shadow hover:bg-white"
+            title="Về Dashboard Staff"
+          >
+            ← Về Dashboard
+          </a>
+          <a
+            href="/staff/transport"
+            className="rounded-xl border border-white/60 bg-white/80 px-3 py-1.5 text-sm font-semibold text-sky-700 shadow hover:bg-white"
+            title="Về trang Transport"
+          >
+            ⤺ Danh sách Transport
+          </a>
+          <span className="text-slate-500">/</span>
+          <span className="text-sm text-slate-700">Tạo Trip mới</span>
+        </div>
+
+        {/* Header */}
+        <div className="mb-5 overflow-hidden rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur">
+          <div className="relative p-5">
+            <div className="absolute -top-20 right-0 -z-10 h-40 w-40 rounded-full bg-cyan-400/20 blur-3xl" />
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h1 className="text-2xl font-extrabold tracking-tight text-sky-800">
@@ -302,8 +319,9 @@ export default function TransportTripCreatePage() {
                 ) : infoErr ? (
                   <p className="mt-1 whitespace-pre-wrap text-red-700">{infoErr}</p>
                 ) : transport ? (
-                  <p className="mt-1 text-sky-900/80">
-                    Transport: <b>{transport.transportType}</b> — <b>{transport.name}</b>
+                  <p className="mt-1 text-sky-900/90">
+                    <span className="mr-1">{iconByType(transport.transportType)}</span>
+                    <b>{transport.name}</b> • Loại: <b>{transport.transportType}</b>
                   </p>
                 ) : (
                   <p className="mt-1 text-red-700">Không tìm thấy transport.</p>
@@ -311,138 +329,170 @@ export default function TransportTripCreatePage() {
               </div>
               <button
                 onClick={() => router.push('/staff/transport')}
-                className="shrink-0 rounded-xl border border-sky-200 bg-white px-4 py-2 font-semibold text-sky-700 hover:bg-sky-50"
+                className="shrink-0 rounded-2xl border border-sky-200 bg-white px-4 py-2 font-semibold text-sky-700 shadow hover:bg-sky-50"
               >
-                Về trang quản lý
+                Quay lại quản lý
               </button>
             </div>
           </div>
-        </header>
+        </div>
 
+        {/* Form Card */}
         <form
           onSubmit={onSubmit}
-          className="space-y-4 rounded-2xl border border-white/60 bg-white/90 p-5 shadow backdrop-blur"
+          className="space-y-5 overflow-hidden rounded-3xl border border-white/60 bg-white/90 p-5 shadow-xl backdrop-blur"
         >
           {/* From / To */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* From */}
-            <div>
-              <label className="mb-1 block text-sm text-slate-700">Điểm đi *</label>
-              <select
-                value={depProvinceCode ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const code = val === '__OTHER__' ? -1 : Number(val) || undefined;
-                  setDepProvinceCode(code);
-                  if (code !== -1) setDepCustom('');
-                }}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                disabled={provLoading}
-                required
-              >
-                <option value="">{provLoading ? 'Đang tải…' : '— Chọn Tỉnh/Thành —'}</option>
-                {provinces.map((p) => (
-                  <option key={p.code} value={p.code}>
-                    {p.name}
-                  </option>
-                ))}
-                <option value="__OTHER__">Khác…</option>
-              </select>
-              {depProvinceCode === -1 && (
-                <input
-                  className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                  placeholder="Nhập tên thành phố/tỉnh"
-                  value={depCustom}
-                  onChange={(e) => setDepCustom(e.target.value)}
-                  required
-                />
-              )}
-              {provErr && <p className="mt-1 text-xs text-red-600">{provErr}</p>}
-            </div>
+          <div>
+            <div className="mb-2 text-sm font-bold text-slate-900">Điểm đi / Điểm đến</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* From */}
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Điểm đi *</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 my-auto">🛫</span>
+                  <select
+                    value={depProvinceCode ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const code = val === '__OTHER__' ? -1 : Number(val) || undefined;
+                      setDepProvinceCode(code);
+                      if (code !== -1) setDepCustom('');
+                    }}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 pl-9 pr-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    disabled={provLoading}
+                    required
+                  >
+                    <option value="">{provLoading ? 'Đang tải…' : '— Chọn Tỉnh/Thành —'}</option>
+                    {provinces.map((p) => (
+                      <option key={p.code} value={p.code}>
+                        {p.name}
+                      </option>
+                    ))}
+                    <option value="__OTHER__">Khác…</option>
+                  </select>
+                </div>
+                {depProvinceCode === -1 && (
+                  <input
+                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    placeholder="Nhập tên thành phố/tỉnh"
+                    value={depCustom}
+                    onChange={(e) => setDepCustom(e.target.value)}
+                    required
+                  />
+                )}
+                {provErr && <p className="mt-1 text-xs text-red-600">{provErr}</p>}
+              </div>
 
-            {/* To */}
-            <div>
-              <label className="mb-1 block text-sm text-slate-700">Điểm đến *</label>
-              <select
-                value={destProvinceCode ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const code = val === '__OTHER__' ? -1 : Number(val) || undefined;
-                  setDestProvinceCode(code);
-                  if (code !== -1) setDestCustom('');
-                }}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                disabled={provLoading}
-                required
-              >
-                <option value="">{provLoading ? 'Đang tải…' : '— Chọn Tỉnh/Thành —'}</option>
-                {provinces.map((p) => (
-                  <option key={p.code} value={p.code}>
-                    {p.name}
-                  </option>
-                ))}
-                <option value="__OTHER__">Khác…</option>
-              </select>
-              {destProvinceCode === -1 && (
-                <input
-                  className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                  placeholder="Nhập tên thành phố/tỉnh"
-                  value={destCustom}
-                  onChange={(e) => setDestCustom(e.target.value)}
-                  required
-                />
-              )}
-              {provErr && <p className="mt-1 text-xs text-red-600">{provErr}</p>}
+              {/* To */}
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Điểm đến *
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 my-auto">🛬</span>
+                  <select
+                    value={destProvinceCode ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const code = val === '__OTHER__' ? -1 : Number(val) || undefined;
+                      setDestProvinceCode(code);
+                      if (code !== -1) setDestCustom('');
+                    }}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 pl-9 pr-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    disabled={provLoading}
+                    required
+                  >
+                    <option value="">{provLoading ? 'Đang tải…' : '— Chọn Tỉnh/Thành —'}</option>
+                    {provinces.map((p) => (
+                      <option key={p.code} value={p.code}>
+                        {p.name}
+                      </option>
+                    ))}
+                    <option value="__OTHER__">Khác…</option>
+                  </select>
+                </div>
+                {destProvinceCode === -1 && (
+                  <input
+                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    placeholder="Nhập tên thành phố/tỉnh"
+                    value={destCustom}
+                    onChange={(e) => setDestCustom(e.target.value)}
+                    required
+                  />
+                )}
+                {provErr && <p className="mt-1 text-xs text-red-600">{provErr}</p>}
+              </div>
             </div>
           </div>
 
           {/* Time */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm text-slate-700">Giờ khởi hành *</label>
-              <input
-                type="datetime-local"
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                value={departureTime}
-                onChange={(e) => setDepartureTime(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-slate-700">Giờ đến *</label>
-              <input
-                type="datetime-local"
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                value={arrivalTime}
-                onChange={(e) => setArrivalTime(e.target.value)}
-                required
-              />
+          <div>
+            <div className="mb-2 text-sm font-bold text-slate-900">Thời gian</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Giờ khởi hành *
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 my-auto">⏱️</span>
+                  <input
+                    type="datetime-local"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 pl-9 pr-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    value={departureTime}
+                    onChange={(e) => setDepartureTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Giờ đến *</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 my-auto">🕒</span>
+                  <input
+                    type="datetime-local"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 pl-9 pr-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    value={arrivalTime}
+                    onChange={(e) => setArrivalTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Price & Seats */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm text-slate-700">Giá *</label>
-              <input
-                inputMode="decimal"
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                placeholder="VD: 120"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-slate-700">Số chỗ *</label>
-              <input
-                inputMode="numeric"
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 px-3 outline-none focus:ring-2 focus:ring-sky-300"
-                placeholder="VD: 180"
-                value={seats}
-                onChange={(e) => setSeats(e.target.value)}
-                required
-              />
+          <div>
+            <div className="mb-2 text-sm font-bold text-slate-900">Giá & Chỗ</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Giá *</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 my-auto">💵</span>
+                  <input
+                    inputMode="decimal"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 pl-9 pr-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    placeholder="VD: 120"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Số chỗ *</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 my-auto">🪑</span>
+                  <input
+                    inputMode="numeric"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/95 pl-9 pr-3 outline-none focus:ring-2 focus:ring-sky-300"
+                    placeholder="VD: 180"
+                    value={seats}
+                    onChange={(e) => setSeats(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -457,21 +507,27 @@ export default function TransportTripCreatePage() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
             <button
               type="submit"
               disabled={!canSubmit}
-              className="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 px-5 py-2.5 font-semibold text-white shadow-lg shadow-sky-500/20 ring-1 ring-white/20 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? 'Đang tạo…' : 'Tạo Trip'}
             </button>
             <button
               type="button"
               onClick={() => router.push('/staff/transport')}
-              className="rounded-xl border border-sky-200 bg-white px-4 py-2 font-semibold text-sky-700 hover:bg-sky-50"
+              className="rounded-2xl border border-sky-200 bg-white px-5 py-2.5 font-semibold text-sky-700 shadow hover:bg-sky-50"
             >
-              Về trang quản lý
+              Về trang Transport
             </button>
+            <a
+              href="/staff"
+              className="rounded-2xl border border-emerald-200 bg-white px-5 py-2.5 font-semibold text-emerald-700 shadow hover:bg-emerald-50"
+            >
+              ← Về Dashboard
+            </a>
           </div>
         </form>
       </div>

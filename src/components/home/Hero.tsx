@@ -5,9 +5,10 @@ import { useState } from 'react';
 import BadgeTab from './HeroComponent/BadgeTab';
 import FlightSearch from './HeroComponent/Search/FlightSearch';
 import HotelSearch from './HeroComponent/Search/HotelSearch';
+import ShowSearch from './HeroComponent/Search/ShowSearch'; // ⬅️ thêm
 
 export default function Hero() {
-  const [tab, setTab] = useState<'hotel' | 'flight'>('hotel');
+  const [tab, setTab] = useState<'hotel' | 'flight' | 'show'>('hotel'); // ⬅️ thêm 'show'
 
   return (
     <section className="relative w-full min-h-[560px]">
@@ -17,7 +18,7 @@ export default function Hero() {
       <div className="relative z-10 mx-auto flex h-[560px] max-w-7xl flex-col items-center justify-center px-4 text-white">
         <h1 className="text-center text-4xl font-bold sm:text-5xl">Explore Vietnam</h1>
         <p className="mt-3 text-center text-lg opacity-90">
-          Book hotels & flight tickets quickly with Trippio.
+          Book hotels, flight tickets & show tickets quickly with Trippio.
         </p>
 
         {/* Tabs */}
@@ -28,12 +29,21 @@ export default function Hero() {
           <BadgeTab active={tab === 'flight'} onClick={() => setTab('flight')}>
             <span>✈️</span> Flight tickets
           </BadgeTab>
+          <BadgeTab active={tab === 'show'} onClick={() => setTab('show')}>
+            <span>🎭</span> Show
+          </BadgeTab>
         </div>
 
         {/* Search box */}
         <div className="mt-4 w-full -mx-4">
           <div className="mx-auto w-full max-w-7xl rounded-2xl bg-white/95 text-slate-900 px-4 py-3 md:px-6 md:py-4 shadow-xl backdrop-blur overflow-visible">
-            {tab === 'hotel' ? <HotelSearch /> : <FlightSearch />}
+            {tab === 'hotel' ? (
+              <HotelSearch />
+            ) : tab === 'flight' ? (
+              <FlightSearch />
+            ) : (
+              <ShowSearch />
+            )}
           </div>
         </div>
 

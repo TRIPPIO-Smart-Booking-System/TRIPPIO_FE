@@ -21,7 +21,7 @@ export default function ShowListPage() {
     currency: 'VND',
   });
 
-  // NEW: chỉ mở 1 card
+  // chỉ mở 1 card
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,31 +41,65 @@ export default function ShowListPage() {
     })();
   }, []);
 
+  // lấy yyyy-mm-dd an toàn từ chuỗi ISO
+  const dateStr = (d?: string | Date | null): string => {
+    if (!d) return '';
+    if (typeof d === 'string') {
+      const t = d.split('T')[0] || d; // supports "YYYY-MM-DDTHH:mm:ssZ" or already "YYYY-MM-DD"
+      // crude validate "YYYY-MM-DD"
+      if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+      // fallback: parse
+      const p = new Date(d);
+      if (!Number.isNaN(p.getTime())) {
+        const y = p.getFullYear();
+        const m = String(p.getMonth() + 1).padStart(2, '0');
+        const day = String(p.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
+      return '';
+    }
+    const dd = new Date(d);
+    if (Number.isNaN(dd.getTime())) return '';
+    const y = dd.getFullYear();
+    const m = String(dd.getMonth() + 1).padStart(2, '0');
+    const day = String(dd.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // milliseconds for sorting (invalid -> +Infinity to push to end)
+  const dateMs = (d?: string | Date | null): number => {
+    if (!d) return Number.POSITIVE_INFINITY;
+    const ms = new Date(d).getTime();
+    return Number.isNaN(ms) ? Number.POSITIVE_INFINITY : ms;
+  };
+
   // danh sách city
   const cities = useMemo(() => {
     const s = new Set<string>();
-    shows.forEach((x) => x.city && s.add(x.city));
+    shows.forEach((x) => x?.city && s.add(String(x.city)));
     return Array.from(s).sort((a, b) => a.localeCompare(b));
   }, [shows]);
 
-  // lọc
+  // lọc + sắp xếp
   const filtered = useMemo(() => {
     const { city, date } = filters;
-    const target = shows.filter((s) => {
-      const okCity = !city || s.city.toLowerCase() === city.toLowerCase();
-      const okDate =
-        !date ||
-        (new Date(s.startDate).toISOString().slice(0, 10) <= date &&
-          new Date(s.endDate).toISOString().slice(0, 10) >= date);
+    const list = shows.filter((s) => {
+      const sCity = String(s?.city ?? '').toLowerCase();
+      const okCity = !city || sCity === city.toLowerCase();
+
+      const sStart = dateStr(s.startDate);
+      const sEnd = dateStr(s.endDate);
+      const okDate = !date || (!!sStart && !!sEnd && sStart <= date && sEnd >= date);
+
       return okCity && okDate;
     });
-    // sort: sắp xếp gần nhất
-    return target.sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate));
+
+    return [...list].sort((a, b) => dateMs(a.startDate) - dateMs(b.startDate));
   }, [shows, filters]);
 
-  // Nếu danh sách thay đổi và card đang mở không còn tồn tại -> đóng
+  // nếu item đang mở không còn sau khi lọc -> đóng
   useEffect(() => {
-    if (openId && !filtered.some((x) => x.id === openId)) {
+    if (openId && !filtered.some((x) => String(x.id) === openId)) {
       setOpenId(null);
     }
   }, [filtered, openId]);
@@ -180,9 +214,18 @@ export default function ShowListPage() {
 
         {/* GRID */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((show) => (
-            <ShowCard key={show.id} show={show} currency={filters.currency} />
-          ))}
+          {filtered.map((show) => {
+            const id = String(show.id);
+            return (
+              <ShowCard
+                key={id}
+                show={show}
+                currency={filters.currency}
+                isOpen={openId === id}
+                onToggle={() => setOpenId((prev) => (prev === id ? null : id))}
+              />
+            );
+          })}
         </div>
 
         {!loading && !err && !filtered.length && (

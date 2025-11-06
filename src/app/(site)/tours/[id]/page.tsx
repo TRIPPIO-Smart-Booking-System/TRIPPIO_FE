@@ -1,27 +1,29 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { tours } from '@/data/tours';
 import Breadcrumb from '@/components/tour/Breadcrumb';
 import Gallery from '@/components/tour/Gallery';
-
 import TitleMeta from '@/components/tour/TitleMeta';
-
 import Highlights from '@/components/tour/Highlights';
 import Itinerary from '@/components/tour/Itinerary';
 import IncludedList from '@/components/tour/IncludedList';
 import SectionCard from '@/components/Card/BookCard/SectionCard';
 import BookCard from '@/components/Card/BookCard/BookCard';
 
-type Props = { params: { id: string } };
+export default function TourDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const tour = useMemo(() => tours.find((t) => t.id === id), [id]);
 
-export default function TourDetailPage({ params }: Props) {
-  const tour = useMemo(() => tours.find((t) => t.id === params.id), [params.id]);
-  if (!tour) notFound();
-
+  // ✅ Hooks trước mọi early-return
   const [date, setDate] = useState<string>('');
   const [guests, setGuests] = useState<number>(2);
+
+  // ✅ không cần return null
+  if (!tour) {
+    notFound();
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">

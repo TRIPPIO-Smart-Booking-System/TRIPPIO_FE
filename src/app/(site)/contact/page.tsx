@@ -1,4 +1,9 @@
-/* app/portal/page.tsx (hoặc bất kỳ route nào bạn muốn) */
+/* app/portal/page.tsx */
+import type { ComponentType, ReactNode, SVGProps } from 'react';
+
+type IconType = ComponentType<SVGProps<SVGSVGElement>>;
+
+/* ========================= PAGE ========================= */
 export default function ContactPortalLanding() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-sky-50 text-slate-800">
@@ -200,7 +205,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
   );
 }
 
-function FeatureCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
+function FeatureCard({ icon: Icon, title, desc }: { icon: IconType; title: string; desc: string }) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/75 p-5 transition hover:bg-white">
       <div className="flex items-start gap-3">
@@ -233,7 +238,7 @@ function ContactCard({
   href,
   badge,
 }: {
-  icon: any;
+  icon: IconType;
   title: string;
   desc: string;
   cta: string;
@@ -271,7 +276,7 @@ function ContactCard({
   );
 }
 
-function Marquee({ children }: { children: React.ReactNode }) {
+function Marquee({ children }: { children: ReactNode }) {
   return (
     <div className="relative mt-3 overflow-hidden">
       <div className="animate-marquee whitespace-nowrap text-sky-700">
@@ -281,12 +286,12 @@ function Marquee({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-function MarqueeItem({ children }: { children: React.ReactNode }) {
+function MarqueeItem({ children }: { children: ReactNode }) {
   return <span className="mx-6 inline-block py-2 text-sm">{children}</span>;
 }
 
 /* ======================== ICONS (inline) ======================== */
-function PhoneIcon(props: any) {
+function PhoneIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -300,7 +305,7 @@ function PhoneIcon(props: any) {
     </svg>
   );
 }
-function MailIcon(props: any) {
+function MailIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -315,7 +320,7 @@ function MailIcon(props: any) {
     </svg>
   );
 }
-function ChatIcon(props: any) {
+function ChatIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -329,7 +334,7 @@ function ChatIcon(props: any) {
     </svg>
   );
 }
-function TicketIcon(props: any) {
+function TicketIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -405,7 +410,6 @@ function BirdsLayer() {
   );
 }
 function Bird({ index }: { index: number }) {
-  // vary size/speed/height by index
   const size = 14 + (index % 4) * 4; // 14..26
   const top = 10 + ((index * 13) % 70); // 10..80vh
   const dur = 14 + (index % 5) * 3; // 14..26s
@@ -420,7 +424,6 @@ function Bird({ index }: { index: number }) {
       height={size}
       viewBox="0 0 24 24"
     >
-      {/* simple gull shape */}
       <path
         d="M2 12c4-4 8-4 10-2 2-2 6-2 10 2"
         fill="none"
@@ -434,7 +437,7 @@ function Bird({ index }: { index: number }) {
 }
 
 /* ============================ DATA ============================ */
-const features = [
+const features: Array<{ icon: IconType; title: string; desc: string }> = [
   {
     icon: PhoneIcon,
     title: 'Đa kênh hợp nhất',
@@ -467,7 +470,7 @@ const features = [
   },
 ];
 
-const faqs = [
+const faqs: Array<{ q: string; a: string }> = [
   {
     q: 'Tôi có thể tích hợp những kênh nào?',
     a: 'Hiện hỗ trợ Email (IMAP/SMTP), Zalo OA, Hotline SIP/VoIP, TikTok Business và webhook tuỳ chỉnh.',

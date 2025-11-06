@@ -2,6 +2,7 @@
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import pluginReact from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks'; // 👈 THÊM DÒNG NÀY
 import prettier from 'eslint-config-prettier';
 
 export default [
@@ -31,8 +32,11 @@ export default [
       globals: { ...globals.browser, ...globals.node },
     },
     settings: { react: { version: 'detect' } },
+    plugins: { 'react-hooks': reactHooks },                // 👈 THÊM
     rules: {
       'react/react-in-jsx-scope': 'off',
+      'react-hooks/rules-of-hooks': 'error',               // 👈 THÊM
+      'react-hooks/exhaustive-deps': 'warn',               // 👈 THÊM
     },
   },
 
