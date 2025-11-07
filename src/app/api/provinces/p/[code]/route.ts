@@ -1,13 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import type { RouteContext } from 'next';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const OPEN = 'https://provinces.open-api.vn/api';
 
-export async function GET(_req: Request, context: { params: { code: string } }) {
+export async function GET(req: NextRequest, context: RouteContext) {
   try {
-    const { code } = context.params;
+    const code = context.params.code as string;
     const url = `${OPEN}/p/${code}?depth=2`;
     console.log('[PROXY] →', url);
 
@@ -23,6 +24,9 @@ export async function GET(_req: Request, context: { params: { code: string } }) 
     return NextResponse.json(data, { status: 200 });
   } catch (e) {
     console.error('[PROXY] FAILED:', e);
-    return NextResponse.json({ error: 'proxy_failed', detail: String(e) }, { status: 502 });
+    return NextResponse.json(
+      { error: 'proxy_failed', detail: String(e) },
+      { status: 502 }
+    );
   }
 }
