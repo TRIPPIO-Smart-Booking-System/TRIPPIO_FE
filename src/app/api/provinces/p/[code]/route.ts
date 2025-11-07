@@ -1,19 +1,13 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const OPEN = 'https://provinces.open-api.vn/api';
 
-interface RouteParams {
-  params: {
-    code: string;
-  };
-}
-
-export async function GET(_req: NextRequest, context: RouteParams) {
+export async function GET(_req: Request, context: any) {
   try {
-    const { code } = context.params;
+    const code = context.params.code;
     const url = `${OPEN}/p/${code}?depth=2`;
     console.log('[PROXY] →', url);
 
