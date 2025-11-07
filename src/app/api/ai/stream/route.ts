@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return new Response('Missing GOOGLE_API_KEY', { status: 500 });
   }
 
-  const client = new GoogleGenerativeAI({ apiKey });
+  const client = new GoogleGenerativeAI(apiKey);
   const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const contents = [
