@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic';
 
 const OPEN = 'https://provinces.open-api.vn/api';
 
-export async function GET(_req: Request, context: Record<string, unknown>) {
+export async function GET(_req: Request, context: any) {
   try {
-    const code = (context as any).params.code as string; // ép kiểu tại đây
+    const code = context.params.code;
     const url = `${OPEN}/p/${code}?depth=2`;
     console.log('[PROXY] →', url);
 
