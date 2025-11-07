@@ -5,12 +5,16 @@ export const dynamic = 'force-dynamic';
 
 const OPEN = 'https://provinces.open-api.vn/api';
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { code: string } }
-) {
+interface RouteParams {
+  params: {
+    code: string;
+  };
+}
+
+export async function GET(_req: NextRequest, context: RouteParams) {
   try {
-    const url = `${OPEN}/p/${params.code}?depth=2`;
+    const { code } = context.params;
+    const url = `${OPEN}/p/${code}?depth=2`;
     console.log('[PROXY] →', url);
 
     const r = await fetch(url, { cache: 'no-store' });
