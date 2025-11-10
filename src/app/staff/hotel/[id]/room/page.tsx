@@ -106,13 +106,13 @@ export default function HotelRoomsPage() {
   const filtered = rooms.filter((r) => r.roomType.toLowerCase().includes(q.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 p-6">
       <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <div className="mb-6">
           <Link
             href="/staff/hotel"
-            className="inline-flex items-center gap-2 text-white/70 hover:text-white font-medium transition-colors"
+            className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-800 font-medium transition-colors"
           >
             <ArrowLeft className="h-5 w-5" /> Quay lại danh sách hotel
           </Link>
@@ -122,17 +122,18 @@ export default function HotelRoomsPage() {
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold text-white mb-2">Quản lý Phòng</h1>
+              <h1 className="text-4xl font-bold text-emerald-900 mb-2">Quản lý Phòng</h1>
               {hotel && (
-                <p className="text-blue-200">
-                  <span className="font-semibold text-white">{hotel.name}</span> • {hotel.city}
+                <p className="text-emerald-700">
+                  <span className="font-semibold text-emerald-900">{hotel.name}</span> •{' '}
+                  {hotel.city}
                 </p>
               )}
             </div>
             {hotelId && (
               <Link
                 href={`/staff/hotel/${hotelId}/room/new`}
-                className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-lg font-semibold shadow-lg transition-colors whitespace-nowrap"
+                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-lg font-semibold shadow-lg transition-colors whitespace-nowrap"
               >
                 <Plus className="h-5 w-5" /> Tạo Room
               </Link>
@@ -147,13 +148,13 @@ export default function HotelRoomsPage() {
             placeholder="🔍 Tìm kiếm theo loại phòng..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-blue-300/30 bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white/20 transition-all backdrop-blur"
+            className="w-full px-4 py-3 rounded-lg border border-emerald-200 bg-white/60 text-emerald-900 placeholder-emerald-600/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
           />
         </div>
 
         {/* Error */}
         {err && (
-          <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 text-red-200 rounded-lg backdrop-blur">
+          <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
             {err}
           </div>
         )}
@@ -161,39 +162,39 @@ export default function HotelRoomsPage() {
         {/* Loading */}
         {loading ? (
           <div className="flex items-center justify-center gap-3 py-16">
-            <Loader className="h-6 w-6 animate-spin text-blue-400" />
-            <span className="text-blue-200">Đang tải...</span>
+            <Loader className="h-6 w-6 animate-spin text-emerald-600" />
+            <span className="text-emerald-700">Đang tải...</span>
           </div>
         ) : filtered.length ? (
           <div className="grid gap-4">
             {filtered.map((room) => (
               <div
                 key={room.id}
-                className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6 hover:bg-white/15 hover:border-white/30 transition-all shadow-lg group"
+                className="bg-white rounded-xl border border-emerald-200 p-6 hover:shadow-lg hover:border-emerald-300 transition-all group"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-white mb-3 group-hover:text-blue-200 transition-colors">
+                    <h2 className="text-2xl font-bold text-emerald-900 mb-3 group-hover:text-emerald-700 transition-colors">
                       {room.roomType}
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-white/60 text-sm font-medium">Sức chứa</p>
-                        <p className="font-bold text-white text-lg">{room.capacity} người</p>
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Sức chứa</p>
+                        <p className="font-bold text-emerald-900 text-lg">{room.capacity} người</p>
                       </div>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-white/60 text-sm font-medium">Phòng còn</p>
-                        <p className="font-bold text-white text-lg">{room.availableRooms}</p>
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Phòng còn</p>
+                        <p className="font-bold text-emerald-900 text-lg">{room.availableRooms}</p>
                       </div>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-white/60 text-sm font-medium">Giá/đêm</p>
-                        <p className="font-bold text-blue-300 text-lg">
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Giá/đêm</p>
+                        <p className="font-bold text-emerald-700 text-lg">
                           {fmtVND(room.pricePerNight)}
                         </p>
                       </div>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-white/60 text-sm font-medium">Tạo lúc</p>
-                        <p className="font-semibold text-white/80 text-sm">
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Tạo lúc</p>
+                        <p className="font-semibold text-emerald-800 text-sm">
                           {fmtDate(room.dateCreated).split(' ')[0]}
                         </p>
                       </div>
@@ -201,7 +202,7 @@ export default function HotelRoomsPage() {
                   </div>
                   <button
                     onClick={() => onDelete(room.id)}
-                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 text-red-200 rounded-lg font-semibold inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                    className="px-4 py-2 bg-red-100 hover:bg-red-200 border border-red-300 text-red-700 rounded-lg font-semibold inline-flex items-center gap-2 transition-colors whitespace-nowrap"
                   >
                     <Trash2 className="h-4 w-4" /> Xóa
                   </button>
@@ -211,7 +212,7 @@ export default function HotelRoomsPage() {
           </div>
         ) : (
           <div className="text-center py-16">
-            <p className="text-white/60 text-lg">Không có room nào</p>
+            <p className="text-emerald-700 text-lg">Không có room nào</p>
           </div>
         )}
       </div>
