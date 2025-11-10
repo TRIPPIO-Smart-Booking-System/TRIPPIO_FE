@@ -26,18 +26,8 @@ type TripCore = {
   availableSeats: number;
 };
 
-type TripRoot = {
-  transportTrip: TripCore & {
-    transport?: {
-      id: string;
-      transportType: string;
-      name: string;
-      dateCreated: string;
-      modifiedDate: string | null;
-      transportTrips: unknown[];
-    };
-  };
-};
+// BE expects flat TripCore, no nested transportTrip
+type TripRoot = TripCore;
 
 type Province = { code: number; name: string; name_en?: string };
 
@@ -225,43 +215,18 @@ export default function TransportTripCreatePage() {
       const toCity = (destProvinceCode === -1 ? destCustom : (destName ?? '')).trim();
       if (fromCity === toCity) throw new Error('Điểm đi và điểm đến phải khác nhau');
 
-      const baseRoot: TripRoot = {
-        transportTrip: {
-          transportId,
-          departure: fromCity,
-          destination: toCity,
-          departureTime: dep,
-          arrivalTime: arr,
-          price: Number(price),
-          availableSeats: Number(seats),
-        },
+      // BE expects CreateTransportTripRequest directly, not nested in transportTrip
+      const payload = {
+        transportId,
+        departure: fromCity,
+        destination: toCity,
+        departureTime: dep,
+        arrivalTime: arr,
+        price: Number(price),
+        availableSeats: Number(seats),
       };
 
-      try {
-        await postTrip(baseRoot);
-      } catch (e) {
-        const msg = errMsg(e);
-        if (saysTransportRequired(msg) && transport) {
-          const retryRoot: TripRoot = {
-            transportTrip: {
-              ...baseRoot.transportTrip,
-              transport: {
-                id: transport.id,
-                transportType: transport.transportType,
-                name: transport.name,
-                dateCreated: transport.dateCreated ?? new Date().toISOString(),
-                modifiedDate: transport.modifiedDate ?? null,
-                transportTrips: [],
-              },
-            },
-          };
-          await postTrip(retryRoot);
-        } else if (saysTransportTripRequired(msg)) {
-          await postTrip(baseRoot);
-        } else {
-          throw e;
-        }
-      }
+      await postTrip(payload);
 
       setOkMsg('✅ Tạo Trip thành công!');
       // reset nhẹ

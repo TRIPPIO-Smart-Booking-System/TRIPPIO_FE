@@ -22,6 +22,8 @@ import {
   LogOut,
   Star,
   Download,
+  CreditCard,
+  MessageCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -133,6 +135,20 @@ type ApiRoom = {
   modifiedDate: string | null;
 };
 
+type ApiUser = {
+  id: string;
+  userName: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  isActive: boolean;
+  fullName: string;
+  lastLoginDate: string | null;
+  dateCreated: string;
+  roles: string[];
+};
+
 /* ---------- Reviews (local) ---------- */
 const LS_REVIEWS = 'TRIPPIO_ORDER_REVIEWS';
 type LocalReview = {
@@ -140,6 +156,8 @@ type LocalReview = {
   orderId: number; // lưu theo orderCode/orderId
   rating: number; // 1..5
   comment?: string;
+  userName?: string;
+  createdAt?: string;
 };
 function loadLocalReviews(): LocalReview[] {
   try {
@@ -185,7 +203,9 @@ function downloadCSV<T extends Record<string, unknown>>(filename: string, rows: 
 
 /* ---------- Page ---------- */
 export default function AdminDashboardPage() {
-  const [tab, setTab] = useState<'overview' | 'payments' | 'services' | 'reviews'>('overview');
+  const [tab, setTab] = useState<'overview' | 'payments' | 'services' | 'reviews' | 'users'>(
+    'overview'
+  );
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -196,6 +216,13 @@ export default function AdminDashboardPage() {
   const [shows, setShows] = useState<ApiShow[]>([]);
   const [trips, setTrips] = useState<ApiTransportTrip[]>([]);
   const [rooms, setRooms] = useState<ApiRoom[]>([]);
+
+  // users
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [usersPageIndex, setUsersPageIndex] = useState(1);
+  const [usersPageSize, setUsersPageSize] = useState(10);
+  const [usersRowCount, setUsersRowCount] = useState(0);
+  const [qUsers, setQUsers] = useState('');
 
   // users from /api/payment/all
   const [usersFromPayments, setUsersFromPayments] = useState(0);
@@ -304,14 +331,64 @@ export default function AdminDashboardPage() {
         roomsOut = [];
       }
 
-      // Reviews local
-      const reviewsLocal = loadLocalReviews();
+      // Reviews: gọi real API thay vì mock
+      let reviewsOut: LocalReview[] = [];
+      try {
+        const r = await fetch(`${API_BASE}/api/review`, {
+          headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
+          cache: 'no-store',
+        });
+        if (r.ok) {
+          const raw = (await r.json()) as {
+            data?: Array<{
+              id: number;
+              orderId: number;
+              rating: number;
+              comment?: string;
+              userName?: string;
+              createdAt?: string;
+            }>;
+          };
+          reviewsOut = (raw.data || []).map((rv) => ({
+            id: String(rv.id),
+            orderId: rv.orderId,
+            rating: rv.rating,
+            comment: rv.comment,
+            userName: rv.userName,
+            createdAt: rv.createdAt,
+          }));
+        } else {
+          reviewsOut = loadLocalReviews();
+        }
+      } catch {
+        reviewsOut = loadLocalReviews();
+      }
+
+      // Users: gọi API để lấy danh sách user
+      let usersOut: ApiUser[] = [];
+      let usersCount = 0;
+      try {
+        const r = await fetch(`${API_BASE}/api/admin/user/paging?pageIndex=1&pageSize=100`, {
+          headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
+          cache: 'no-store',
+        });
+        if (r.ok) {
+          const raw = (await r.json()) as { results?: ApiUser[]; rowCount?: number };
+          usersOut = raw.results || [];
+          usersCount = raw.rowCount || 0;
+        }
+      } catch {
+        usersOut = [];
+        usersCount = 0;
+      }
 
       setPayments(paysOut);
       setShows(showsOut);
       setTrips(tripsOut);
       setRooms(roomsOut);
-      setReviews(reviewsLocal);
+      setReviews(reviewsOut);
+      setUsers(usersOut);
+      setUsersRowCount(usersCount);
 
       lastUpdatedRef.current = new Date();
     } catch (e) {
@@ -407,6 +484,33 @@ export default function AdminDashboardPage() {
     return { labels: ent.map((e) => e[0] as string), series: ent.map((e) => Number(e[1])) };
   }, [paidPays]);
 
+  /* ---------- Rating Statistics ---------- */
+  const ratingStats = useMemo(() => {
+    if (!reviews.length)
+      return {
+        totalReviews: 0,
+        averageRating: 0,
+        distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      };
+
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let totalRating = 0;
+
+    reviews.forEach((rv) => {
+      const r = Math.min(5, Math.max(1, Math.round(rv.rating))) as 1 | 2 | 3 | 4 | 5;
+      distribution[r]++;
+      totalRating += rv.rating;
+    });
+
+    const avgRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+    return {
+      totalReviews: reviews.length,
+      averageRating: Math.round(avgRating * 10) / 10,
+      distribution,
+    };
+  }, [reviews]);
+
   /* ---------- Filters + paging ---------- */
   const filteredPays = useMemo(() => {
     return payments
@@ -446,6 +550,8 @@ export default function AdminDashboardPage() {
           amountVND: p?.amountVND ?? 0,
           paidAt: p?.createdAt || '',
           method: p?.method || '',
+          userName: rv.userName || '',
+          createdAt: rv.createdAt || '',
         };
       })
       .filter((row) => (reviewStars === 'ALL' ? true : Number(row.rating) === Number(reviewStars)))
@@ -571,8 +677,8 @@ export default function AdminDashboardPage() {
         />
         <KpiCard
           icon={<Users className="h-5 w-5 text-violet-600" />}
-          label="Người dùng (ước tính)"
-          value={String(kpiDisplay.users)}
+          label="Tổng người dùng"
+          value={String(usersRowCount)}
         />
       </div>
 
@@ -589,6 +695,9 @@ export default function AdminDashboardPage() {
         </TabBtn>
         <TabBtn active={tab === 'reviews'} onClick={() => setTab('reviews')}>
           Reviews
+        </TabBtn>
+        <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>
+          Users
         </TabBtn>
       </div>
 
@@ -684,9 +793,9 @@ export default function AdminDashboardPage() {
         {tab === 'payments' && (
           <>
             {/* Filters Payments */}
-            <div className="mb-3 flex items-center gap-2">
-              <div className="flex flex-1 items-center rounded-xl border bg-white px-3">
-                <Search className="mr-2 h-4 w-4 text-slate-400" />
+            <div className="mb-4 flex items-center gap-2 flex-wrap">
+              <div className="flex flex-1 min-w-60 items-center rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm hover:shadow-md transition-shadow">
+                <Search className="mr-3 h-5 w-5 text-slate-400" />
                 <input
                   value={qPays}
                   onChange={(e) => {
@@ -694,7 +803,7 @@ export default function AdminDashboardPage() {
                     setQPays(e.target.value);
                   }}
                   placeholder="Tìm theo mã thanh toán / mã đơn…"
-                  className="h-10 w-full outline-none"
+                  className="h-9 w-full outline-none text-sm"
                 />
               </div>
               <select
@@ -703,7 +812,7 @@ export default function AdminDashboardPage() {
                   setPagePays(1);
                   setPayStatus(e.target.value as 'ALL' | PaymentStatus);
                 }}
-                className="h-10 rounded-xl border bg-white px-3"
+                className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm shadow-sm hover:shadow-md transition-shadow"
               >
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="Paid">Paid</option>
@@ -714,52 +823,88 @@ export default function AdminDashboardPage() {
               </select>
               <button
                 onClick={() => downloadCSV('payments.csv', filteredPays)}
-                className="h-10 rounded-xl border bg-white px-3 text-sm hover:bg-slate-50 inline-flex items-center gap-2"
+                className="h-9 rounded-xl border border-slate-200 bg-white px-4 text-sm hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md inline-flex items-center gap-2 font-medium text-slate-700"
               >
-                <Download className="h-4 w-4" /> Export CSV
+                <Download className="h-4 w-4" /> Export
               </button>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border bg-white">
-              <div className="grid grid-cols-[160px,1fr,160px,160px,160px] gap-3 border-b bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                <div>Mã thanh toán</div>
-                <div>Mã đơn</div>
-                <div>Số tiền</div>
-                <div>Trạng thái</div>
-                <div>Thời gian</div>
+            {/* Payments Table */}
+            {loading ? (
+              <div className="flex items-center justify-center gap-3 py-16 text-slate-600">
+                <RefreshCw className="h-6 w-6 animate-spin" />
+                <span>Đang tải dữ liệu thanh toán…</span>
               </div>
-              {loading ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-slate-600">
-                  <RefreshCw className="h-5 w-5 animate-spin" /> Đang tải…
-                </div>
-              ) : pagePaysRows.length ? (
-                pagePaysRows.map((p) => (
+            ) : pagePaysRows.length ? (
+              <div className="space-y-3">
+                {pagePaysRows.map((p) => (
                   <div
                     key={p.id}
-                    className="grid grid-cols-[160px,1fr,160px,160px,160px] items-center gap-3 border-b px-4 py-3 text-sm last:border-0"
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-200"
                   >
-                    <div className="font-mono text-[12px]">{p.id}</div>
-                    <div className="font-mono text-[12px]">{p.orderId}</div>
-                    <div className="font-semibold">{fmtVND_Pay(p.amountVND)}</div>
-                    <div>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${badgePayment(
-                          p.status
-                        )}`}
-                      >
-                        {iconPayment(p.status)}
-                        {p.status}
-                      </span>
-                    </div>
-                    <div className="text-[12px] text-slate-600">
-                      {new Date(p.createdAt).toLocaleString('vi-VN')}
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      {/* Payment ID */}
+                      <div>
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          Mã Thanh Toán
+                        </div>
+                        <div className="font-mono text-sm font-semibold text-slate-900 break-all">
+                          {p.id}
+                        </div>
+                      </div>
+
+                      {/* Order ID */}
+                      <div>
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          Mã Đơn
+                        </div>
+                        <div className="font-mono text-sm font-semibold text-slate-900">
+                          {p.orderId}
+                        </div>
+                      </div>
+
+                      {/* Amount */}
+                      <div>
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          Số Tiền
+                        </div>
+                        <div className="text-lg font-bold text-emerald-600">
+                          {fmtVND_Pay(p.amountVND)}
+                        </div>
+                      </div>
+
+                      {/* Status */}
+                      <div>
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          Trạng Thái
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${badgePayment(p.status)}`}
+                        >
+                          {iconPayment(p.status)}
+                          {p.status}
+                        </span>
+                      </div>
+
+                      {/* Time */}
+                      <div>
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          Thời Gian
+                        </div>
+                        <div className="text-sm text-slate-700 font-medium">
+                          {new Date(p.createdAt).toLocaleString('vi-VN')}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="py-10 text-center text-slate-600">Không có thanh toán nào.</div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 py-12 text-center">
+                <CreditCard className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                <p className="text-slate-600 font-medium">Không có thanh toán nào.</p>
+              </div>
+            )}
 
             {pageCountPays > 1 && (
               <Pager
@@ -773,117 +918,276 @@ export default function AdminDashboardPage() {
         )}
 
         {tab === 'services' && (
-          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
+          <div className="space-y-6">
             {/* Shows */}
-            <div className="rounded-2xl border bg-white">
-              <HeaderBlock
-                icon={<TicketPercent className="h-5 w-5" />}
-                title="Shows"
-                onExport={() => downloadCSV('shows.csv', shows)}
-              />
-              <div className="grid grid-cols-[160px,1fr,160px,120px,160px] gap-3 border-b bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-                <div>Mã</div>
-                <div>Tên & Địa điểm</div>
-                <div>Thời gian</div>
-                <div>Vé còn</div>
-                <div>Giá</div>
+            <div>
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <TicketPercent className="h-5 w-5 text-blue-600" />
+                    Shows
+                  </h3>
+                  <button
+                    onClick={() => downloadCSV('shows.csv', shows)}
+                    className="h-9 rounded-xl border bg-white px-3 text-sm hover:bg-slate-50 inline-flex items-center gap-2 shadow-sm hover:shadow-md transition-all"
+                  >
+                    <Download className="h-4 w-4" /> Export CSV
+                  </button>
+                </div>
               </div>
               {shows.length ? (
-                shows.map((s) => (
-                  <div
-                    key={s.id}
-                    className="grid grid-cols-[160px,1fr,160px,120px,160px] items-center gap-3 border-b px-4 py-2 text-sm last:border-0"
-                  >
-                    <div className="font-mono text-[12px]">{s.id}</div>
-                    <div>
-                      <div className="font-medium">{s.name}</div>
-                      <div className="text-[12px] text-slate-600">{s.location}</div>
-                      <div className="text-[12px] text-slate-600">{s.city}</div>
+                <div className="space-y-3">
+                  {shows.map((s) => (
+                    <div
+                      key={s.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {/* ID */}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Mã
+                          </div>
+                          <div className="mt-1 font-mono text-sm font-medium text-slate-900">
+                            {s.id}
+                          </div>
+                        </div>
+
+                        {/* Name & Location */}
+                        <div className="md:col-span-2">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Tên & Địa Điểm
+                          </div>
+                          <div className="mt-1">
+                            <div className="font-semibold text-slate-900">{s.name}</div>
+                            <div className="text-xs text-slate-600 mt-1">
+                              📍 {s.location}, {s.city}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Time */}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Thời Gian
+                          </div>
+                          <div className="mt-1 text-xs text-slate-600">
+                            {new Date(s.startDate).toLocaleDateString('vi-VN')} –{' '}
+                            {new Date(s.endDate).toLocaleDateString('vi-VN')}
+                          </div>
+                        </div>
+
+                        {/* Tickets & Price */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Vé Còn
+                            </div>
+                            <div className="mt-1 text-lg font-bold text-blue-600">
+                              {s.availableTickets}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Giá
+                            </div>
+                            <div className="mt-1 text-lg font-bold text-emerald-600">
+                              {fmtVND(s.price)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-[12px] text-slate-600">
-                      {new Date(s.startDate).toLocaleString('vi-VN')} –{' '}
-                      {new Date(s.endDate).toLocaleString('vi-VN')}
-                    </div>
-                    <div>{s.availableTickets}</div>
-                    <div className="font-semibold">{fmtVND(s.price)}</div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <div className="py-6 text-center text-slate-500">Không có dữ liệu.</div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 py-8 text-center">
+                  <TicketPercent className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                  <p className="text-slate-600">Không có shows nào</p>
+                </div>
               )}
             </div>
 
             {/* Transport Trips */}
-            <div className="rounded-2xl border bg-white">
-              <HeaderBlock
-                icon={<Route className="h-5 w-5" />}
-                title="Transport Trips"
-                onExport={() => downloadCSV('transport_trips.csv', trips)}
-              />
-              <div className="grid grid-cols-[160px,1fr,200px,120px,120px] gap-3 border-b bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-                <div>Mã</div>
-                <div>Tuyến & Hãng</div>
-                <div>Thời gian</div>
-                <div>Ghế còn</div>
-                <div>Giá</div>
+            <div>
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Route className="h-5 w-5 text-purple-600" />
+                    Transport Trips
+                  </h3>
+                  <button
+                    onClick={() => downloadCSV('transport_trips.csv', trips)}
+                    className="h-9 rounded-xl border bg-white px-3 text-sm hover:bg-slate-50 inline-flex items-center gap-2 shadow-sm hover:shadow-md transition-all"
+                  >
+                    <Download className="h-4 w-4" /> Export CSV
+                  </button>
+                </div>
               </div>
               {trips.length ? (
-                trips.map((t) => (
-                  <div
-                    key={t.id}
-                    className="grid grid-cols-[160px,1fr,200px,120px,120px] items-center gap-3 border-b px-4 py-2 text-sm last:border-0"
-                  >
-                    <div className="font-mono text-[12px]">{t.id}</div>
-                    <div>
-                      <div className="font-medium">
-                        {t.departure} → {t.destination}
-                      </div>
-                      <div className="text-[12px] text-slate-600">
-                        {t.transportName} • {t.transportType}
+                <div className="space-y-3">
+                  {trips.map((t) => (
+                    <div
+                      key={t.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {/* ID */}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Mã
+                          </div>
+                          <div className="mt-1 font-mono text-sm font-medium text-slate-900">
+                            {t.id}
+                          </div>
+                        </div>
+
+                        {/* Route & Transport */}
+                        <div className="md:col-span-2">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Tuyến & Hãng
+                          </div>
+                          <div className="mt-1">
+                            <div className="font-semibold text-slate-900">
+                              {t.departure} → {t.destination}
+                            </div>
+                            <div className="text-xs text-slate-600 mt-1">
+                              🚌 {t.transportName} • {t.transportType}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Time */}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Thời Gian
+                          </div>
+                          <div className="mt-1 text-xs text-slate-600">
+                            {new Date(t.departureTime).toLocaleDateString('vi-VN')}
+                            <br />
+                            {new Date(t.departureTime).toLocaleTimeString('vi-VN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}{' '}
+                            –{' '}
+                            {new Date(t.arrivalTime).toLocaleTimeString('vi-VN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Seats & Price */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Ghế Còn
+                            </div>
+                            <div className="mt-1 text-lg font-bold text-blue-600">
+                              {t.availableSeats}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Giá
+                            </div>
+                            <div className="mt-1 text-lg font-bold text-emerald-600">
+                              {fmtVND(t.price)}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-[12px] text-slate-600">
-                      {new Date(t.departureTime).toLocaleString('vi-VN')} –{' '}
-                      {new Date(t.arrivalTime).toLocaleString('vi-VN')}
-                    </div>
-                    <div>{t.availableSeats}</div>
-                    <div className="font-semibold">{fmtVND(t.price)}</div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <div className="py-6 text-center text-slate-500">Không có dữ liệu.</div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 py-8 text-center">
+                  <Route className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                  <p className="text-slate-600">Không có trips nào</p>
+                </div>
               )}
             </div>
 
             {/* Rooms */}
-            <div className="rounded-2xl border bg-white 2xl:col-span-2">
-              <HeaderBlock
-                icon={<Hotel className="h-5 w-5" />}
-                title="Rooms"
-                onExport={() => downloadCSV('rooms.csv', rooms)}
-              />
-              <div className="grid grid-cols-[160px,1fr,160px,140px,140px] gap-3 border-b bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-                <div>Mã</div>
-                <div>Hạng phòng</div>
-                <div>Sức chứa</div>
-                <div>Phòng còn</div>
-                <div>Giá/đêm</div>
+            <div>
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Hotel className="h-5 w-5 text-orange-600" />
+                    Rooms
+                  </h3>
+                  <button
+                    onClick={() => downloadCSV('rooms.csv', rooms)}
+                    className="h-9 rounded-xl border bg-white px-3 text-sm hover:bg-slate-50 inline-flex items-center gap-2 shadow-sm hover:shadow-md transition-all"
+                  >
+                    <Download className="h-4 w-4" /> Export CSV
+                  </button>
+                </div>
               </div>
               {rooms.length ? (
-                rooms.map((r) => (
-                  <div
-                    key={r.id}
-                    className="grid grid-cols-[160px,1fr,160px,140px,140px] items-center gap-3 border-b px-4 py-2 text-sm last:border-0"
-                  >
-                    <div className="font-mono text-[12px]">{r.id}</div>
-                    <div>{r.roomType}</div>
-                    <div>{r.capacity}</div>
-                    <div>{r.availableRooms}</div>
-                    <div className="font-semibold">{fmtVND(r.pricePerNight)}</div>
-                  </div>
-                ))
+                <div className="space-y-3">
+                  {rooms.map((r) => (
+                    <div
+                      key={r.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {/* ID */}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Mã
+                          </div>
+                          <div className="mt-1 font-mono text-sm font-medium text-slate-900">
+                            {r.id}
+                          </div>
+                        </div>
+
+                        {/* Room Type */}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Hạng Phòng
+                          </div>
+                          <div className="mt-1 font-semibold text-slate-900">{r.roomType}</div>
+                        </div>
+
+                        {/* Capacity */}
+                        <div>
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Sức Chứa
+                          </div>
+                          <div className="mt-1 text-lg font-bold text-blue-600">
+                            {r.capacity} người
+                          </div>
+                        </div>
+
+                        {/* Available & Price */}
+                        <div className="md:col-span-2 grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Phòng Còn
+                            </div>
+                            <div className="mt-1 text-lg font-bold text-blue-600">
+                              {r.availableRooms}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Giá/Đêm
+                            </div>
+                            <div className="mt-1 text-lg font-bold text-emerald-600">
+                              {fmtVND(r.pricePerNight)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <div className="py-6 text-center text-slate-500">Không có dữ liệu.</div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 py-8 text-center">
+                  <Hotel className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                  <p className="text-slate-600">Không có rooms nào</p>
+                </div>
               )}
             </div>
           </div>
@@ -891,6 +1195,70 @@ export default function AdminDashboardPage() {
 
         {tab === 'reviews' && (
           <>
+            {/* Rating Statistics */}
+            <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="rounded-xl border bg-white p-4">
+                <div className="text-sm text-slate-600">Tổng đánh giá</div>
+                <div className="mt-2 text-2xl font-bold text-slate-900">
+                  {ratingStats.totalReviews}
+                </div>
+              </div>
+              <div className="rounded-xl border bg-white p-4">
+                <div className="text-sm text-slate-600">Điểm trung bình</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="text-2xl font-bold text-amber-600">
+                    {ratingStats.averageRating}
+                  </div>
+                  <div className="flex">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < Math.round(ratingStats.averageRating)
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-slate-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border bg-white p-4">
+                <div className="text-sm text-slate-600">5 sao</div>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {ratingStats.distribution[5]}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {ratingStats.totalReviews > 0
+                      ? `${Math.round((ratingStats.distribution[5] / ratingStats.totalReviews) * 100)}%`
+                      : '0%'}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border bg-white p-4">
+                <div className="text-sm text-slate-600">Phân bố sao</div>
+                <div className="mt-2 space-y-1 text-xs">
+                  {[5, 4, 3, 2, 1].map((s) => (
+                    <div key={s} className="flex items-center gap-2">
+                      <span className="w-4 text-right">{s}:</span>
+                      <div className="flex-1 h-2 bg-slate-200 rounded overflow-hidden">
+                        <div
+                          className="h-full bg-amber-400 transition-all"
+                          style={{
+                            width: `${ratingStats.totalReviews > 0 ? (ratingStats.distribution[s as 1 | 2 | 3 | 4 | 5] / ratingStats.totalReviews) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="w-5 text-right text-slate-600">
+                        {ratingStats.distribution[s as 1 | 2 | 3 | 4 | 5]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Filters Reviews */}
             <div className="mb-3 flex items-center gap-2">
               <div className="flex flex-1 items-center rounded-xl border bg-white px-3">
@@ -932,46 +1300,106 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border bg-white">
-              <div className="grid grid-cols-[140px,140px,1fr,120px,160px,120px] gap-3 border-b bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                <div>Order Code</div>
-                <div>Payment ID</div>
-                <div>Review</div>
-                <div>Điểm</div>
-                <div>Số tiền</div>
-                <div>Thời gian</div>
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-slate-600 bg-white rounded-2xl">
+                <RefreshCw className="h-5 w-5 animate-spin" /> Đang tải…
               </div>
-              {loading ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-slate-600">
-                  <RefreshCw className="h-5 w-5 animate-spin" /> Đang tải…
-                </div>
-              ) : pageReviewsRows.length ? (
-                pageReviewsRows.map((row) => (
+            ) : pageReviewsRows.length ? (
+              <div className="space-y-3">
+                {pageReviewsRows.map((row) => (
                   <div
                     key={`${row.orderId}-${row.paymentId}`}
-                    className="grid grid-cols-[140px,140px,1fr,120px,160px,120px] items-center gap-3 border-b px-4 py-3 text-sm last:border-0"
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
                   >
-                    <div className="font-mono text-[12px]">{row.orderId}</div>
-                    <div className="font-mono text-[12px]">{row.paymentId || '—'}</div>
-                    <div className="text-slate-700">
-                      {row.comment || <span className="text-slate-400">—</span>}
+                    {/* Top Row - Main Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                      {/* Order Code */}
+                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          Order Code
+                        </div>
+                        <div className="mt-1 font-mono text-sm font-medium text-slate-900">
+                          {row.orderId}
+                        </div>
+                      </div>
+
+                      {/* Payment ID */}
+                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          Payment ID
+                        </div>
+                        <div className="mt-1 font-mono text-sm text-slate-600">
+                          {row.paymentId || '—'}
+                        </div>
+                      </div>
+
+                      {/* Rating - Highlighted */}
+                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          Điểm
+                        </div>
+                        <div className="mt-1 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2">
+                          <StarRow value={row.rating} />
+                          <span className="font-semibold text-blue-900">{row.rating}/5</span>
+                        </div>
+                      </div>
+
+                      {/* Username */}
+                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          Người Dùng
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-slate-900">
+                          {row.userName || '—'}
+                        </div>
+                      </div>
+
+                      {/* Created Date */}
+                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          Ngày Tạo
+                        </div>
+                        <div className="mt-1 text-sm text-slate-600">
+                          {row.createdAt
+                            ? new Date(row.createdAt).toLocaleDateString('vi-VN')
+                            : '—'}
+                        </div>
+                      </div>
+
+                      {/* Time */}
+                      <div className="md:pl-4">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          Giờ
+                        </div>
+                        <div className="mt-1 text-sm text-slate-600">
+                          {row.createdAt
+                            ? new Date(row.createdAt).toLocaleTimeString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '—'}
+                        </div>
+                      </div>
                     </div>
-                    <div className="inline-flex items-center gap-1">
-                      <StarRow value={row.rating} />
-                      <span className="text-xs text-slate-500 ml-1">{row.rating}/5</span>
-                    </div>
-                    <div className="font-semibold">{fmtVND(row.amountVND)}</div>
-                    <div className="text-[12px] text-slate-600">
-                      {row.paidAt ? new Date(row.paidAt).toLocaleString('vi-VN') : '—'}
-                    </div>
+
+                    {/* Review Comment */}
+                    {row.comment && (
+                      <div className="mt-4 border-t border-slate-200 pt-4">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                          💬 Nhận Xét
+                        </div>
+                        <p className="text-sm text-slate-700 leading-relaxed">{row.comment}</p>
+                      </div>
+                    )}
                   </div>
-                ))
-              ) : (
-                <div className="py-10 text-center text-slate-600">
-                  Chưa có review nào. (Lưu ý: review đang lưu local theo trình duyệt)
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
+                <MessageCircle className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                <p className="text-slate-600">Chưa có review nào</p>
+              </div>
+            )}
 
             {pageCountReviews > 1 && (
               <Pager
@@ -980,6 +1408,120 @@ export default function AdminDashboardPage() {
                 onPrev={() => setPageReviews((p) => Math.max(1, p - 1))}
                 onNext={() => setPageReviews((p) => Math.min(pageCountReviews, p + 1))}
               />
+            )}
+          </>
+        )}
+
+        {tab === 'users' && (
+          <>
+            {/* Users Stats */}
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="text-sm text-slate-600">Tổng người dùng</div>
+                <div className="mt-2 text-3xl font-bold text-slate-900">{usersRowCount}</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="text-sm text-slate-600">Đang hiển thị</div>
+                <div className="mt-2 text-3xl font-bold text-blue-600">{users.length}</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="text-sm text-slate-600">Đang hoạt động</div>
+                <div className="mt-2 text-3xl font-bold text-emerald-600">
+                  {users.filter((u) => u.isActive).length}
+                </div>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex flex-1 items-center rounded-xl border bg-white px-3">
+                <Search className="mr-2 h-4 w-4 text-slate-400" />
+                <input
+                  value={qUsers}
+                  onChange={(e) => setQUsers(e.target.value)}
+                  placeholder="Tìm theo tên, email, số điện thoại…"
+                  className="h-10 w-full outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Users Grid */}
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-slate-600 bg-white rounded-2xl">
+                <RefreshCw className="h-5 w-5 animate-spin" /> Đang tải…
+              </div>
+            ) : users.length ? (
+              <div className="space-y-3">
+                {users
+                  .filter((u) =>
+                    !qUsers
+                      ? true
+                      : u.fullName.toLowerCase().includes(qUsers.toLowerCase()) ||
+                        u.email.toLowerCase().includes(qUsers.toLowerCase()) ||
+                        u.phoneNumber.includes(qUsers)
+                  )
+                  .map((user) => (
+                    <div
+                      key={user.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {/* Username */}
+                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Username
+                          </div>
+                          <div className="mt-1 font-mono text-sm font-medium text-slate-900">
+                            {user.userName}
+                          </div>
+                        </div>
+
+                        {/* Full Name */}
+                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Họ Tên
+                          </div>
+                          <div className="mt-1 text-sm font-medium text-slate-900">
+                            {user.fullName}
+                          </div>
+                        </div>
+
+                        {/* Email */}
+                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Email
+                          </div>
+                          <div className="mt-1 text-sm text-slate-600 truncate">{user.email}</div>
+                        </div>
+
+                        {/* Phone */}
+                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Điện Thoại
+                          </div>
+                          <div className="mt-1 text-sm text-slate-600">{user.phoneNumber}</div>
+                        </div>
+
+                        {/* Last Login */}
+                        <div className="md:pl-4">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Lần Đăng Nhập
+                          </div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            {user.lastLoginDate
+                              ? new Date(user.lastLoginDate).toLocaleDateString('vi-VN')
+                              : '—'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+                <Users className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                <p className="text-slate-600">Không có người dùng nào</p>
+              </div>
             )}
           </>
         )}
