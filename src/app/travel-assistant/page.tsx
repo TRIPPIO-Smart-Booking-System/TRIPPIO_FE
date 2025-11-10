@@ -4,58 +4,76 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, Send, Upload, Loader, X } from 'lucide-react';
+import { ArrowLeft, Send, Upload, Loader, X, ArrowUp } from 'lucide-react';
 import { getAuth } from '@/lib/auth';
+import {
+  getHotels,
+  getRooms,
+  getShows,
+  getTransports,
+  getTransportTrips,
+  buildTravelRecommendations,
+  type Hotel,
+  type Room,
+  type Show,
+  type Transport,
+  type TransportTrip,
+} from '@/lib/ai';
 
 const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
 
-const SYSTEM_PROMPT = `Bạn là Trợ lý ảo Trippio - một chuyên gia du lịch thông minh giúp khách hàng lên kế hoạch chuyến đi hoàn hảo.
+// This will be built dynamically with real data
+let SYSTEM_PROMPT = `Bạn là Trợ lý ảo Trippio - một chuyên gia du lịch thông minh giúp khách hàng lên kế hoạch chuyến đi hoàn hảo.
 
 ## Thông tin về dịch vụ Trippio:
 
 ### Available APIs:
-1. **Hotels** - GET /api/Hotel → Danh sách tất cả khách sạn
-2. **Rooms** - GET /api/Room → Danh sách tất cả phòng khách sạn
-3. **Shows/Entertainment** - GET /api/Show → Danh sách các điểm vui chơi, sự kiện
-4. **Transport** - GET /api/Transport → Danh sách phương tiện vận chuyển
-5. **Transport Trips** - GET /api/TransportTrip → Danh sách tất cả chuyến đi
-   - GET /api/TransportTrip/available → Danh sách chuyến đi khả dụng
+1. **Hotels API** - GET /api/Hotel → Danh sách tất cả khách sạn
+2. **Rooms API** - GET /api/Room → Danh sách tất cả phòng khách sạn
+3. **Shows/Entertainment API** - GET /api/Show → Danh sách các điểm vui chơi, sự kiện
+4. **Transport API** - GET /api/Transport → Danh sách phương tiện vận chuyển
+5. **Transport Trips API** - GET /api/TransportTrip/available → Danh sách chuyến đi khả dụng
+
+### Dữ liệu thực từ Trippio:
+[DATA_WILL_BE_INJECTED_HERE]
 
 ## Hướng dẫn tương tác:
 
 ### Khi khách hỏi chung chung:
 - Chủ động hỏi thêm: 
   - 📍 Địa điểm muốn đi (thành phố/vùng)
-  - 📅 Thời gian du lịch (ngày bao nhiêu người)
+  - 📅 Thời gian du lịch (ngày, tháng, bao nhiêu đêm)
   - 👥 Số lượng người đi
   - 💰 Ngân sách dự tính
   - ❤️ Sở thích (biển, núi, thành phố, ẩm thực, vui chơi, nghỉ dưỡng...)
   - 🎯 Loại hình du lịch (nhóm bạn, gia đình, cặp đôi, độc hành...)
 
 ### Khi phân tích và gợi ý:
-- 🏨 **Khách sạn & Phòng**: Gợi ý dựa trên ngân sách, vị trí, tiện ích
-- ✈️ **Phương tiện**: Tư vấn xe bus, máy bay dựa trên:
+- 🏨 **Khách sạn & Phòng**: Gợi ý từ dữ liệu thực, dựa trên:
+  - Vị trí, số sao, đánh giá
+  - Ngân sách (loại phòng, giá/đêm)
+  - Tiện ích phù hợp
+  
+- ✈️ **Phương tiện & Chuyến đi**: Tư vấn dựa trên:
+  - Loại phương tiện (xe bus, máy bay, tàu...)
   - Khoảng cách & thời gian hành trình
-  - Thời tiết hôm đó
-  - Ngân sách & sở thích
-  - Tính chất chuyến đi
-- 🎭 **Điểm vui chơi**: Đề xuất dựa trên sở thích, thời gian, giá vé
-- 📸 **Phân tích ảnh**: Khi khách gửi ảnh du lịch, hãy:
-  - Nhận dạng địa điểm
-  - Gợi ý nơi liên quan
+  - Giá vé
+  - Thời gian xuất phát phù hợp
+  
+- 🎭 **Điểm vui chơi & Sự kiện**: Đề xuất từ dữ liệu thực
+  - Địa điểm, ngày hoạt động
+  - Giá vé
+  - Phù hợp với sở thích
+  
+- 📸 **Phân tích ảnh**: Khi khách gửi ảnh du lịch:
+  - Nhận dạng địa điểm, phong cảnh
+  - Gợi ý những nơi tương tự trong dữ liệu Trippio
   - Tư vấn hành trình tối ưu
 
-### Gợi ý địa điểm:
-- Phân tích thời tiết, mùa du lịch
-- Khoảng cách từ các địa điểm khác
-- Chi phí trung bình
-- Hoạt động phù hợp
-- Nên đi vào thời gian nào trong năm
-
-### Tính tiền:
-- Tính toán chi phí dựa trên thông tin đã gợi ý
-- So sánh các lựa chọn
+### Tính tiền & So sánh:
+- Tính toán chi phí chi tiết (khách sạn + phương tiện + vui chơi)
+- So sánh các lựa chọn theo mức giá (bình dân, trung bình, cao cấp)
 - Tối ưu hóa ngân sách
 
 ## Tính cách:
@@ -63,7 +81,7 @@ const SYSTEM_PROMPT = `Bạn là Trợ lý ảo Trippio - một chuyên gia du l
 - Luôn sẵn sàng nghe và hiểu nhu cầu của khách
 - Gợi ý cụ thể, chi tiết, có lý do rõ ràng
 - Khi có thắc mắc → Hỏi lại để hiểu rõ hơn
-- Luôn đề xuất các lựa chọn khác nhau theo mức giá
+- Luôn đề xuất các lựa chọn khác nhau theo mức giá từ dữ liệu Trippio
 `;
 
 type Msg = { role: 'user' | 'assistant'; content: string; image?: string };
@@ -94,13 +112,16 @@ type TdProps = React.TdHTMLAttributes<HTMLTableCellElement> & {
 const CodeRenderer = ({ inline, className, children, ...props }: CodeRendererProps) => {
   if (inline) {
     return (
-      <code className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-[0.9em] text-cyan-200" {...props}>
+      <code
+        className="rounded bg-teal-100 px-1.5 py-0.5 text-[0.9em] text-teal-700 font-mono"
+        {...props}
+      >
         {children}
       </code>
     );
   }
   return (
-    <pre className="overflow-x-auto rounded-xl border border-cyan-500/30 bg-cyan-950/30 p-4 text-[0.9em] leading-relaxed">
+    <pre className="overflow-x-auto rounded-xl border border-teal-200 bg-gray-50 p-4 text-[0.9em] leading-relaxed font-mono">
       <code className={className} {...props}>
         {children}
       </code>
@@ -110,7 +131,7 @@ const CodeRenderer = ({ inline, className, children, ...props }: CodeRendererPro
 
 const ARenderer = ({ children, ...props }: AnchorProps) => (
   <a
-    className="text-cyan-300 underline decoration-cyan-400 underline-offset-2 hover:text-cyan-200"
+    className="text-teal-600 underline decoration-teal-400 underline-offset-2 hover:text-teal-700"
     target="_blank"
     rel="noreferrer"
     {...props}
@@ -129,7 +150,7 @@ const TableRenderer = ({ children, ...props }: TableProps) => (
 
 const ThRenderer = ({ children, ...props }: ThProps) => (
   <th
-    className="border-b border-cyan-500/30 bg-cyan-900/30 px-3 py-2 text-left font-semibold text-cyan-200"
+    className="border-b border-teal-200 bg-teal-50 px-3 py-2 text-left font-semibold text-teal-900"
     {...props}
   >
     {children}
@@ -137,7 +158,7 @@ const ThRenderer = ({ children, ...props }: ThProps) => (
 );
 
 const TdRenderer = ({ children, ...props }: TdProps) => (
-  <td className="border-b border-cyan-500/20 px-3 py-2 align-top" {...props}>
+  <td className="border-b border-teal-100 px-3 py-2 align-top text-gray-700" {...props}>
     {children}
   </td>
 );
@@ -164,9 +185,9 @@ function CopyButton({ text }: { text: string }) {
         }
       }}
       title="Copy"
-      className="rounded-lg border border-cyan-500/50 px-2 py-1 text-xs text-cyan-300 hover:bg-cyan-900/30 active:scale-95"
+      className="rounded px-2 py-1 text-xs bg-teal-100 text-teal-700 hover:bg-teal-200 active:scale-95 transition-colors"
     >
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? '✓ Copied' : 'Copy'}
     </button>
   );
 }
@@ -176,21 +197,21 @@ function MessageBubble({ msg }: { msg: Msg }) {
   return (
     <div
       className={classNames(
-        'flex w-full gap-3 items-start',
+        'flex w-full gap-3 items-end',
         isUser ? 'justify-end' : 'justify-start'
       )}
     >
       {!isUser && (
-        <div className="mt-1 grid h-8 w-8 shrink-0 select-none place-items-center rounded-full bg-gradient-to-br from-pink-500 via-purple-500 to-cyan-500 text-white font-bold text-sm">
-          AI
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 text-white font-bold text-sm flex items-center justify-center flex-shrink-0">
+          🤖
         </div>
       )}
       <div
         className={classNames(
-          'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-lg',
+          'max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
           isUser
-            ? 'bg-gradient-to-br from-sky-500 to-cyan-600 text-white'
-            : 'bg-cyan-950/40 text-cyan-100 border border-cyan-500/30 backdrop-blur'
+            ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-br-none'
+            : 'bg-gray-100 text-gray-900 rounded-bl-none'
         )}
       >
         {/* Show image if exists */}
@@ -198,21 +219,17 @@ function MessageBubble({ msg }: { msg: Msg }) {
           <img
             src={msg.image}
             alt="message-image"
-            className="mb-2 max-w-full rounded-lg max-h-64 object-cover"
+            className="mb-2 max-w-full rounded-lg max-h-48 object-cover"
           />
         )}
-        <div
-          className={classNames(
-            'prose prose-invert max-w-none text-sm prose-p:my-2 prose-ul:my-2 prose-li:my-1 prose-ol:my-2 prose-pre:my-2 prose-headings:my-2'
-          )}
-        >
+        <div className={classNames('prose prose-sm max-w-none', isUser ? 'prose-invert' : '')}>
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
             {msg.content}
           </ReactMarkdown>
         </div>
         <div
           className={classNames(
-            'mt-2 flex items-center gap-2',
+            'mt-2 flex items-center gap-2 text-xs',
             isUser ? 'justify-end' : 'justify-start'
           )}
         >
@@ -220,7 +237,7 @@ function MessageBubble({ msg }: { msg: Msg }) {
         </div>
       </div>
       {isUser && (
-        <div className="mt-1 grid h-8 w-8 shrink-0 select-none place-items-center rounded-full bg-sky-600 text-white font-bold text-sm">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 text-white font-bold text-sm flex items-center justify-center flex-shrink-0">
           U
         </div>
       )}
@@ -240,14 +257,83 @@ export default function TravelAssistantPage() {
   const [loading, setLoading] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [tripioData, setTripioData] = useState<{
+    hotels: Hotel[];
+    rooms: Room[];
+    shows: Show[];
+    transports: Transport[];
+    trips: TransportTrip[];
+  } | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Load Trippio data on component mount
+  useEffect(() => {
+    const loadTripioData = async () => {
+      try {
+        const [hotels, rooms, shows, transports, trips] = await Promise.all([
+          getHotels(),
+          getRooms(),
+          getShows(),
+          getTransports(),
+          getTransportTrips(),
+        ]);
+
+        setTripioData({ hotels, rooms, shows, transports, trips });
+
+        // Build system prompt with real data
+        let dataInfo = '### 📊 Dữ liệu Khả Dụng Trên Trippio:\n\n';
+        dataInfo += `- **${hotels.length} Khách sạn** ở các thành phố: ${[...new Set(hotels.map((h) => h.city))].join(', ')}\n`;
+        dataInfo += `- **${rooms.length} Phòng** với giá từ ${Math.min(...rooms.map((r) => r.pricePerNight)).toLocaleString('vi-VN')} - ${Math.max(...rooms.map((r) => r.pricePerNight)).toLocaleString('vi-VN')} VND/đêm\n`;
+        dataInfo += `- **${shows.length} Điểm vui chơi & Sự kiện** ở các thành phố: ${[...new Set(shows.map((s) => s.city))].join(', ')}\n`;
+        dataInfo += `- **${transports.length} Loại phương tiện** vận chuyển: ${transports.map((t) => t.name).join(', ')}\n`;
+        dataInfo += `- **${trips.length} Chuyến đi khả dụng** giữa các thành phố\n`;
+
+        SYSTEM_PROMPT = SYSTEM_PROMPT.replace('[DATA_WILL_BE_INJECTED_HERE]', dataInfo);
+      } catch (e) {
+        console.error('Failed to load Trippio data:', e);
+      }
+    };
+
+    loadTripioData();
+  }, []);
 
   useLayoutEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
+
+  // Handle scroll to show/hide back to top button
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) {
+      console.log('❌ messagesContainerRef not available');
+      return;
+    }
+    console.log('✅ messagesContainerRef found:', {
+      scrollHeight: container.scrollHeight,
+      clientHeight: container.clientHeight,
+    });
+
+    const handleScroll = () => {
+      const isScrolled = container.scrollTop > 100;
+      console.log(`📍 Scroll event - scrollTop: ${container.scrollTop}, showButton: ${isScrolled}`);
+      setShowScrollTop(isScrolled);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    messagesContainerRef.current?.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -292,6 +378,21 @@ export default function TravelAssistantPage() {
 
       // Prepare Gemini request body
       const contents: any[] = [];
+      // Add system message as first user message with system role instruction
+      contents.push({
+        role: 'user',
+        parts: [{ text: SYSTEM_PROMPT }],
+      });
+
+      // Add model response to acknowledge system prompt
+      contents.push({
+        role: 'model',
+        parts: [
+          {
+            text: 'Tôi đã hiểu. Tôi sẽ là trợ lý du lịch Trippio thông minh, hỏi thêm thông tin khi cần thiết, phân tích nhu cầu và gợi ý thông minh dựa trên các dịch vụ khách sạn, phòng, vui chơi, và phương tiện vận chuyển của Trippio. Tôi sẽ phân tích thời tiết, khoảng cách, giá cả và tối ưu hóa cho khách hàng.',
+          },
+        ],
+      });
 
       // Build conversation history
       for (const msg of messages) {
@@ -311,7 +412,7 @@ export default function TravelAssistantPage() {
             role: 'user',
             parts,
           });
-        } else {
+        } else if (msg.content) {
           contents.push({
             role: 'model',
             parts: [{ text: msg.content }],
@@ -319,8 +420,18 @@ export default function TravelAssistantPage() {
         }
       }
 
+      // Add context with Trippio data if available
+      let contextText = '';
+      if (tripioData) {
+        contextText += '\n\n### 📋 Dữ liệu Trippio Hiện Có:\n';
+        contextText += `**Khách sạn:** ${tripioData.hotels.map((h) => `${h.name} (${h.city}, ${h.stars}⭐)`).join('; ')}\n`;
+        contextText += `**Điểm vui chơi:** ${tripioData.shows.map((s) => `${s.name} (${s.city})`).join('; ')}\n`;
+        contextText += `**Phương tiện:** ${tripioData.transports.map((t) => t.name).join(', ')}\n`;
+        contextText += `**Phòng giá từ ${Math.min(...tripioData.rooms.map((r) => r.pricePerNight)).toLocaleString('vi-VN')} - ${Math.max(...tripioData.rooms.map((r) => r.pricePerNight)).toLocaleString('vi-VN')} VND/đêm**\n`;
+      }
+
       // Add current message
-      const currentParts: any[] = [{ text }];
+      const currentParts: any[] = [{ text: text + contextText }];
       if (uploadedFile) {
         const base64 = await new Promise<string>((resolve) => {
           const reader = new FileReader();
@@ -426,58 +537,62 @@ export default function TravelAssistantPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(1400px_700px_at_70%_-10%,#ffb2c8_15%,transparent_60%),radial-gradient(900px_500px_at_20%_0%,#fde68a_10%,transparent_50%),linear-gradient(180deg,#0ea5e9_10%,#06b6d4_30%,#14b8a6_50%,#0ea5e9_85%)] p-4 md:p-6 relative overflow-hidden">
-      {/* Background grid + noise effect (matching homepage) */}
-      <div className="fixed inset-0 [background:linear-gradient(transparent_23px,rgba(255,255,255,.04)_24px),linear-gradient(90deg,transparent_23px,rgba(255,255,255,.04)_24px)] [background-size:24px_24px] mix-blend-overlay pointer-events-none" />
-      <div className="fixed inset-0 opacity-20 mix-blend-overlay pointer-events-none [background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 opacity=%220.02%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%222%22/></filter><rect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/></svg>')]" />
-
-      <div className="max-w-4xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen flex flex-col bg-[#F6FBFA]">
+      {/* Header */}
+      <div className="bg-white border-b border-teal-100 px-6 py-4 shadow-sm">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/homepage"
-              className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors backdrop-blur-sm bg-white/5 rounded-lg p-2"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-teal-50 transition-colors text-teal-600 hover:text-teal-700"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-3xl font-bold text-white drop-shadow-lg">🤖 Trợ lý ảo Trippio</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">🤖 Trợ lý ảo Trippio</h1>
+              <p className="text-sm text-gray-500">Chuyên gia gợi ý du lịch thông minh</p>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="text-center mb-6">
-          <p className="text-white/80 drop-shadow-md font-medium">
-            Chuyên gia gợi ý du lịch thông minh • Phân tích ảnh • Tìm kiếm địa điểm
-          </p>
+      {/* Main Container - Full Height Layout */}
+      <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto px-4 py-6 h-full">
+        {/* Chat Messages Area - Scrollable */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 flex flex-col gap-4 mb-6 overflow-y-auto px-2 relative min-h-0"
+        >
+          {messages.map((m, i) => (
+            <MessageBubble key={i} msg={m} />
+          ))}
+          <div ref={endRef} />
         </div>
 
-        {/* Chat Container */}
-        <div className="bg-white/15 backdrop-blur-xl border border-white/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[70vh] md:h-[600px]">
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-white/5 to-cyan-900/10">
-            {messages.map((m, i) => (
-              <MessageBubble key={i} msg={m} />
-            ))}
-            <div ref={endRef} />
-          </div>
-
+        {/* Chat Input Form */}
+        <div className="bg-white rounded-2xl shadow-lg border border-teal-100 p-6 space-y-4 flex-shrink-0">
           {/* Image Preview */}
           {uploadedImage && (
-            <div className="flex items-center gap-3 px-6 py-3 bg-white/10 border-t border-white/30 backdrop-blur-sm">
+            <div className="flex items-center gap-3 p-4 bg-teal-50 rounded-lg border border-teal-200">
               <img
                 src={uploadedImage}
                 alt="preview"
-                className="h-16 w-16 rounded-lg object-cover border border-white/30"
+                className="h-20 w-20 rounded-lg object-cover border border-teal-300"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white/80 truncate">{uploadedFile?.name}</p>
+                <p className="text-sm text-gray-700 font-medium truncate">{uploadedFile?.name}</p>
+                <p className="text-xs text-gray-500">
+                  {(uploadedFile?.size ?? 0) / 1024 / 1024 > 0
+                    ? `${((uploadedFile?.size ?? 0) / 1024 / 1024).toFixed(2)} MB`
+                    : '0 MB'}
+                </p>
               </div>
               <button
                 onClick={() => {
                   setUploadedImage(null);
                   setUploadedFile(null);
                 }}
-                className="p-1.5 rounded-lg hover:bg-red-500/30 text-red-200 transition-colors hover:text-red-100"
+                className="p-2 rounded-lg hover:bg-red-100 text-red-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -485,40 +600,21 @@ export default function TravelAssistantPage() {
           )}
 
           {/* Input Area */}
-          <div className="flex flex-col gap-3 border-t border-white/30 p-4 bg-white/10 backdrop-blur-sm">
-            <div className="flex items-end gap-3">
-              <div className="flex-1 flex flex-col gap-2">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  placeholder="Nhập câu hỏi (Shift+Enter xuống dòng)..."
-                  rows={1}
-                  className="min-h-10 max-h-24 flex-1 resize-none rounded-lg bg-white/20 border border-white/40 px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all backdrop-blur-sm"
-                />
-              </div>
-              {loading ? (
-                <button
-                  onClick={() => abortRef.current?.abort()}
-                  className="rounded-lg bg-red-500/40 hover:bg-red-500/60 px-4 py-2 font-semibold text-red-100 border border-red-400/50 transition-colors inline-flex items-center gap-2 whitespace-nowrap backdrop-blur-sm"
-                >
-                  <X className="h-4 w-4" /> Dừng
-                </button>
-              ) : (
-                <button
-                  onClick={send}
-                  disabled={!input.trim() && !uploadedFile}
-                  className="rounded-lg bg-gradient-to-r from-cyan-500 to-sky-600 hover:from-cyan-600 hover:to-sky-700 disabled:from-cyan-600/50 disabled:to-sky-700/50 disabled:cursor-not-allowed px-4 py-2 font-semibold text-white transition-all inline-flex items-center gap-2 whitespace-nowrap backdrop-blur-sm shadow-lg"
-                >
-                  <Send className="h-4 w-4" /> Gửi
-                </button>
-              )}
-            </div>
+          <div className="flex flex-col gap-3">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Nhập câu hỏi của bạn tại đây..."
+              rows={3}
+              className="min-h-20 max-h-32 flex-1 resize-none rounded-xl bg-gray-50 border border-teal-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all font-medium"
+            />
 
-            {/* Image Upload */}
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white transition-colors text-sm font-medium">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              {/* Upload Image Button */}
+              <label className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer font-medium">
                 <Upload className="h-4 w-4" />
                 <span>Tải ảnh</span>
                 <input
@@ -529,17 +625,44 @@ export default function TravelAssistantPage() {
                   disabled={loading}
                 />
               </label>
-              <span className="text-xs text-white/60">
-                Tải ảnh phong cảnh, du lịch để tôi phân tích
-              </span>
+
+              <div className="flex-1" />
+
+              {/* Send/Cancel Button */}
+              {loading ? (
+                <button
+                  onClick={() => abortRef.current?.abort()}
+                  className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors font-semibold"
+                >
+                  <X className="h-4 w-4" />
+                  Dừng
+                </button>
+              ) : (
+                <button
+                  onClick={send}
+                  disabled={!input.trim() && !uploadedFile}
+                  className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white transition-all font-semibold shadow-md"
+                >
+                  <Send className="h-4 w-4" />
+                  Gửi
+                </button>
+              )}
             </div>
           </div>
+
+          <p className="text-xs text-gray-400 text-center">Nhấn Shift + Enter để xuống dòng</p>
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-6 text-white/70 text-xs drop-shadow-md">
-          <p>💡 Gợi ý: Hãy gửi ảnh du lịch hoặc đặt câu hỏi về khách sạn, tour, địa điểm</p>
-        </div>
+        {/* Back to Top Button */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 z-50 inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-lg transition-all hover:scale-110 active:scale-95"
+            title="Trở lên đầu"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   );
