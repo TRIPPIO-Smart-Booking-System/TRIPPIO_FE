@@ -1,3 +1,4 @@
+// /src/components/home/HeroComponent/Search/HotelSearch.tsx
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -70,10 +71,15 @@ const CITY_OPTIONS: Option[] = [
 type GuestsValue = { adults: number; children: number; rooms: number };
 
 // ---------------- Utils ----------------
-function useOutsideClose(ref: React.RefObject<HTMLElement>, onClose: () => void) {
+// ✅ Generic chuẩn: RefObject<T> đã mặc định .current là T | null, KHÔNG dùng T | null trong generic.
+function useOutsideClose<T extends HTMLElement>(
+  ref: React.RefObject<T | null>,
+  onClose: () => void
+) {
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      const el = ref.current;
+      if (el && !el.contains(e.target as Node | null)) onClose();
     };
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -84,7 +90,7 @@ function useOutsideClose(ref: React.RefObject<HTMLElement>, onClose: () => void)
       document.removeEventListener('mousedown', onDoc);
       document.removeEventListener('keydown', onEsc);
     };
-  }, [ref, onClose]);
+  }, [onClose, ref]);
 }
 
 // ---------------- Guests dropdown ----------------
@@ -96,7 +102,8 @@ function GuestsRoomsDropdown({
   onChange: (v: GuestsValue) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
+  // ❗ Quan trọng: KHÔNG dùng HTMLDivElement | null trong generic
+  const ref = useRef<HTMLDivElement>(null);
   useOutsideClose(ref, () => setOpen(false));
 
   const summary = `${value.adults} người lớn · ${value.children} trẻ em · ${value.rooms} phòng`;
@@ -184,11 +191,12 @@ export default function HotelSearch() {
 
   return (
     <div className="w-full text-slate-900">
-      {/* Container with soft tint & glass to match FlightSearch vibe */}
+      {/* Container with soft tint & glass */}
       <div
         className={clsx(
           'rounded-3xl border border-teal-200/40 bg-white/80 p-3 shadow-sm backdrop-blur',
-          'supports-[backdrop-filter]:bg-white/70'
+          // ✅ Theo gợi ý Tailwind (tránh cảnh báo)
+          'supports-backdrop-filter:bg-white/70'
         )}
       >
         <div className="grid items-end gap-3 md:grid-cols-12">

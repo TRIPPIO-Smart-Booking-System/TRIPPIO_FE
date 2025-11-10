@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { postJSON } from '@/lib/http';
 
@@ -81,19 +81,27 @@ function scorePassword(pwd: string) {
     pwd.length >= 12,
   ];
   score = rules.reduce((s, ok) => s + (ok ? 1 : 0), 0);
-
   if (score >= 5) score = 4;
   else if (score >= 4) score = 3;
   else if (score >= 3) score = 2;
   else if (score >= 2) score = 1;
   else score = 0;
-
   const label = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'][score];
   return { score, label };
 }
 
-/* =========================== PAGE =========================== */
+/* =========================== PAGE WRAPPER =========================== */
+/** Bọc component con trong Suspense để hợp lệ khi dùng useSearchParams */
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-sm text-neutral-600">Loading…</div>}>
+      <ResetPasswordInner />
+    </Suspense>
+  );
+}
+
+/* =========================== INNER (giữ nguyên UI/logic) =========================== */
+function ResetPasswordInner() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -272,12 +280,14 @@ export default function ResetPasswordPage() {
                             'bg-amber-500',
                             'bg-emerald-500',
                             'bg-emerald-600',
-                          ][pwdScore.score]
+                          ][scorePassword(pwd).score]
                         }`}
-                        style={{ width: `${(pwdScore.score + 1) * 20}%` }}
+                        style={{ width: `${(scorePassword(pwd).score + 1) * 20}%` }}
                       />
                     </div>
-                    <div className="mt-1 text-xs text-neutral-600">Độ mạnh: {pwdScore.label}</div>
+                    <div className="mt-1 text-xs text-neutral-600">
+                      Độ mạnh: {scorePassword(pwd).label}
+                    </div>
                   </div>
                 </div>
 

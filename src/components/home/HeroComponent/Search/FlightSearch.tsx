@@ -21,7 +21,7 @@ const AIRPORTS: Airport[] = [
   { code: 'VCA', label: 'Cần Thơ (VCA)' },
 ];
 
-// Icons
+// Icons (giữ nguyên)
 const PlaneIcon = () => (
   <svg
     width="16"
@@ -69,10 +69,16 @@ const CalendarIcon = () => (
 
 // ---- Pax dropdown (popover) ----
 type Pax = { adults: number; children: number; infants: number };
-function useOutsideClose(ref: React.RefObject<HTMLElement>, onClose: () => void) {
+
+/** ✅ Hỗ trợ cả createRef lẫn useRef và xử lý null đúng cách */
+type AnyRef<T extends HTMLElement> = React.RefObject<T> | React.MutableRefObject<T | null>;
+
+function useOutsideClose<T extends HTMLElement>(ref: AnyRef<T>, onClose: () => void) {
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (ref.current && e.target instanceof Node && !ref.current.contains(e.target)) {
+        onClose();
+      }
     };
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -88,7 +94,7 @@ function useOutsideClose(ref: React.RefObject<HTMLElement>, onClose: () => void)
 
 function PaxDropdown({ value, onChange }: { value: Pax; onChange: (v: Pax) => void }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null); // ✅ đúng chuẩn
   useOutsideClose(ref, () => setOpen(false));
 
   const label = `${value.adults} Người lớn, ${value.children} Trẻ em, ${value.infants} Em bé`;
@@ -150,7 +156,7 @@ function PaxDropdown({ value, onChange }: { value: Pax; onChange: (v: Pax) => vo
 // ---- Cabin dropdown (popover, auto-close) ----
 function CabinDropdown({ value, onChange }: { value: Cabin; onChange: (v: Cabin) => void }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null); // ✅ đúng chuẩn
   useOutsideClose(ref, () => setOpen(false));
 
   const label =
@@ -265,7 +271,6 @@ export default function FlightSearch() {
       <div className="grid items-end gap-3 md:grid-cols-12">
         {/* Từ/Đến */}
         <div className="md:col-span-7">
-          {/* label chữ đen thay vì trắng */}
           <div className="mb-1 flex justify-between px-2 text-xs text-slate-700">
             <span>Từ</span>
             <span>Đến</span>

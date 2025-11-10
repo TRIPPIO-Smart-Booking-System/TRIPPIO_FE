@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { postJSON } from '@/lib/http';
 
@@ -27,7 +27,21 @@ function MailIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Page wrapper: BẮT BUỘC có Suspense để dùng useSearchParams bên trong.
+ */
 export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-sm text-neutral-600">Loading…</div>}>
+      <ForgotPasswordInner />
+    </Suspense>
+  );
+}
+
+/**
+ * Component con: chứa toàn bộ logic & UI gốc (dùng useSearchParams ở đây).
+ */
+function ForgotPasswordInner() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -38,7 +52,6 @@ export default function ForgotPasswordPage() {
 
   const emailValid = useMemo(() => {
     if (!email) return false;
-    // đơn giản nhưng thực tế đủ dùng
     const re = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
     return re.test(email.trim());
   }, [email]);
@@ -58,7 +71,6 @@ export default function ForgotPasswordPage() {
         return;
       }
       setOk('Đã gửi OTP! Vui lòng kiểm tra hộp thư của bạn.');
-      // → Luôn chuyển sang verify-otp (luồng reset)
       const qs = new URLSearchParams({
         email: email.trim(),
         redirect: '/reset-password',

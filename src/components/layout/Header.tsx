@@ -1,3 +1,4 @@
+// /src/components/layout/Header.tsx
 'use client';
 
 import Link from 'next/link';
@@ -5,12 +6,11 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { User, ShoppingCart, LogOut, Clock } from 'lucide-react';
 
-/* ---------- helpers ---------- */
-function useOnClickOutside<T extends HTMLElement>(ref: React.RefObject<T>, cb: () => void) {
+/* ---------- helpers (dùng callback ref, không dùng RefObject) ---------- */
+function useOnClickOutsideEl<T extends HTMLElement>(el: T | null, cb: () => void) {
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!ref.current) return;
-      if (!ref.current.contains(e.target as Node)) cb();
+      if (el && !el.contains(e.target as Node | null)) cb();
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && cb();
     document.addEventListener('mousedown', onDown);
@@ -19,7 +19,7 @@ function useOnClickOutside<T extends HTMLElement>(ref: React.RefObject<T>, cb: (
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [cb, ref]);
+  }, [el, cb]);
 }
 
 function hasToken(): boolean {
@@ -46,7 +46,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
       <span className="relative">
         {children}
         <span
-          className={`absolute -bottom-1 left-0 h-[2px] w-full origin-left scale-x-0 rounded-full bg-white/90 transition-transform duration-300 group-hover:scale-x-100 ${active ? 'scale-x-100' : ''}`}
+          className={`absolute -bottom-1 left-0 h-0.5 w-full origin-left scale-x-0 rounded-full bg-white/90 transition-transform duration-300 group-hover:scale-x-100 ${active ? 'scale-x-100' : ''}`}
         />
       </span>
     </Link>
@@ -65,8 +65,10 @@ export default function Header() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const ddRef = useRef<HTMLDivElement>(null);
-  useOnClickOutside(ddRef, () => setDropdownOpen(false));
+
+  // dùng callback ref thay vì RefObject để tránh TS2345
+  const [ddEl, setDdEl] = useState<HTMLDivElement | null>(null);
+  useOnClickOutsideEl(ddEl, () => setDropdownOpen(false));
 
   /* --- scroll listeners --- */
   useEffect(() => {
@@ -122,9 +124,7 @@ export default function Header() {
       localStorage.removeItem('authToken');
       localStorage.removeItem('trippio_token');
     } catch {}
-    // thông báo cho header các nơi khác
     window.dispatchEvent(new Event('auth:changed'));
-    // hard redirect để reset toàn bộ state nếu muốn
     window.location.href = '/login';
   };
 
@@ -144,7 +144,7 @@ export default function Header() {
         <div className="absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-[linear-gradient(180deg,#0b2749,#0e315c)]" />
           <div className="aurora absolute -inset-24 blur-3xl" />
-          <div className="pointer-events-none absolute inset-0 opacity-30 [background:radial-gradient(2px_2px_at_20px_30px,rgba(255,255,255,.25)_1px,transparent_1px)] [background-size:40px_40px]" />
+          <div className="pointer-events-none absolute inset-0 opacity-30 [background:radial-gradient(2px_2px_at_20px_30px,rgba(255,255,255,.25)_1px,transparent_1px)] bg-size-[40px_40px]" />
         </div>
 
         {/* row 1 — rút gọn padding/height */}
@@ -207,7 +207,7 @@ export default function Header() {
             </nav>
 
             {/* profile dropdown */}
-            <div className="relative" ref={ddRef}>
+            <div className="relative" ref={setDdEl}>
               <button
                 className="flex items-center gap-2 rounded-full px-2.5 py-1 text-white hover:bg-white/10"
                 onClick={() => setDropdownOpen((p) => !p)}
@@ -290,7 +290,7 @@ export default function Header() {
       {/* mobile menu (gọn) */}
       <div
         className={`md:hidden overflow-hidden bg-white/95 backdrop-blur transition-[max-height,opacity] duration-300 shadow-lg
-          ${openMobile ? 'max-h-[18rem] opacity-100' : 'max-h-0 opacity-0'}`}
+          ${openMobile ? 'max-h-72 opacity-100' : 'max-h-0 opacity-0'}`}
       >
         <div className="mx-auto max-w-screen-2xl px-4 pb-3 pt-2">
           <div className="flex flex-col gap-1">
@@ -308,7 +308,7 @@ export default function Header() {
                 className={`rounded-xl px-3 py-2 text-sm ${
                   pathname === href || pathname.startsWith(href + '/')
                     ? 'bg-sky-100 text-sky-700'
-                    : 'hover:bg-foreground/[0.05]'
+                    : 'hover:bg-foreground/5'
                 }`}
               >
                 {label}
