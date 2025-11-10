@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Facebook, Instagram, Youtube, Mail, Phone, MapPin } from 'lucide-react';
 
 export default function Footer() {
@@ -21,18 +22,21 @@ export default function Footer() {
               <Link
                 href="#"
                 className="flex h-9 w-9 items-center justify-center rounded-full border hover:bg-muted"
+                aria-label="Facebook"
               >
                 <Facebook className="h-4 w-4" />
               </Link>
               <Link
                 href="#"
                 className="flex h-9 w-9 items-center justify-center rounded-full border hover:bg-muted"
+                aria-label="Instagram"
               >
                 <Instagram className="h-4 w-4" />
               </Link>
               <Link
                 href="#"
                 className="flex h-9 w-9 items-center justify-center rounded-full border hover:bg-muted"
+                aria-label="YouTube"
               >
                 <Youtube className="h-4 w-4" />
               </Link>
@@ -77,7 +81,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Cột 4 - Liên hệ */}
+          {/* Cột 4 - Liên hệ + QR tải app */}
           <div>
             <h4 className="text-lg font-semibold">Liên hệ</h4>
             <ul className="mt-3 space-y-3 text-sm text-muted-foreground">
@@ -91,6 +95,8 @@ export default function Footer() {
                 <MapPin className="h-4 w-4" /> 123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh
               </li>
             </ul>
+
+            {/* Form đăng ký */}
             <div className="mt-4 flex">
               <input
                 type="email"
@@ -100,6 +106,28 @@ export default function Footer() {
               <button className="rounded-r-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 Đăng ký
               </button>
+            </div>
+
+            {/* QR tải app */}
+            <div className="mt-5 rounded-2xl border bg-background p-3 shadow-sm">
+              <div className="rounded-xl bg-muted/40 p-3">
+                <div className="aspect-square overflow-hidden rounded-lg border bg-white">
+                  <Image
+                    src="/images/qrTripio.jpg"
+                    alt="QR tải ứng dụng Trippio"
+                    width={400}
+                    height={400}
+                    className="h-full w-full object-contain"
+                    priority
+                  />
+                </div>
+              </div>
+              <div className="mt-2 text-center">
+                <div className="text-sm font-semibold">Quét mã để tải app</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Trải nghiệm đặt dịch vụ du lịch nhanh chóng cùng Trippio.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -114,7 +142,7 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Blob trang trí - không còn gây dư khoảng trắng */}
+      {/* Blob trang trí */}
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
     </footer>
   );

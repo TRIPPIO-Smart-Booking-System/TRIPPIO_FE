@@ -5,6 +5,7 @@ import Newsletter from '@/components/home/Newsletter';
 import DreamDestinations from '@/components/home/DreamDestinations';
 import PopularDestinations from '@/components/home/PopularDestinations';
 import FeaturedTopTours from '@/components/home/FeaturedTopTours';
+import Footer from '@/components/layout/Footer';
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
         <FeaturedTopTours />
         <WhyChooseUs />
         <Newsletter />
+        <Footer />
       </main>
 
       {/* optional: floating blobs để nền sống động hơn */}
