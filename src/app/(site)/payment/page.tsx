@@ -22,6 +22,12 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fmtVND } from '@/lib/payment';
+import {
+  apiCreateReview,
+  apiUpdateReview,
+  apiDeleteReview,
+  apiGetReviewsByOrderId,
+} from '@/lib/review.api';
 
 /* ====== Constants ====== */
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
@@ -194,22 +200,36 @@ function broadcastReviewsChanged() {
   } catch {}
 }
 
-// wrappers “API”
+// wrappers "API"
 async function fetchReviewByOrder(orderId: number): Promise<Review | null> {
-  return getLocalReviewByOrder(orderId);
+  try {
+    const res = await apiGetReviewsByOrderId(orderId);
+    const reviews = res?.data || [];
+    return reviews.length > 0 ? reviews[0] : null;
+  } catch {
+    return null;
+  }
 }
+
 async function createReview(input: { orderId: number; rating: number; comment: string }) {
-  const res = createLocalReview(input);
+  const res = await apiCreateReview({
+    orderId: input.orderId,
+    rating: input.rating,
+    comment: input.comment,
+  });
   broadcastReviewsChanged();
-  return res;
+  return res?.data || res;
 }
 async function updateReview(id: string, input: { rating: number; comment: string }) {
-  const res = updateLocalReview(id, input);
+  const res = await apiUpdateReview(Number(id), {
+    rating: input.rating,
+    comment: input.comment,
+  });
   broadcastReviewsChanged();
-  return res;
+  return res?.data || res;
 }
 async function deleteReview(id: string) {
-  deleteLocalReview(id);
+  await apiDeleteReview(Number(id));
   broadcastReviewsChanged();
   return true;
 }

@@ -1,7 +1,18 @@
 // src/components/ReviewModal.tsx
 'use client';
 import { useState } from 'react';
-import { apiCreateReview } from '@/lib/review.api';
+import { Loader2, Star, X } from 'lucide-react';
+import { getAuth } from '@/lib/auth';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
+
+function getToken(): string | null {
+  try {
+    return localStorage.getItem('authToken') ?? localStorage.getItem('accessToken');
+  } catch {
+    return null;
+  }
+}
 
 function errorMessage(err: unknown, fallback = 'Gửi đánh giá thất bại'): string {
   if (err instanceof Error) return err.message || fallback;
@@ -27,16 +38,54 @@ export default function ReviewModal({
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   if (!open) return null;
 
   const submit = async () => {
-    if (!orderId) return;
+    if (!orderId) {
+      setErr('Không tìm thấy đơn hàng');
+      return;
+    }
+
     setSaving(true);
     setErr(null);
+    setSuccess(false);
+
     try {
-      await apiCreateReview({ orderId, rating, comment: comment.trim() || undefined });
-      onClose(true);
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/api/review`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: Number(orderId),
+          rating,
+          comment: comment.trim() || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const msg = await response.text().catch(() => 'Lỗi không xác định');
+        throw new Error(`HTTP ${response.status}: ${msg}`);
+      }
+
+      const data = await response.json();
+      setSuccess(true);
+      setRating(5);
+      setComment('');
+
+      // Close modal sau 1.5s
+      setTimeout(() => {
+        onClose(true);
+      }, 1500);
     } catch (e: unknown) {
       setErr(errorMessage(e));
     } finally {
@@ -44,59 +93,126 @@ export default function ReviewModal({
     }
   };
 
+  const handleClose = () => {
+    if (!saving) {
+      setRating(5);
+      setComment('');
+      setErr(null);
+      setSuccess(false);
+      onClose(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-        <h3 className="text-lg font-semibold">Đánh giá đơn hàng #{orderId}</h3>
-
-        <div className="mt-4">
-          <div className="text-sm text-zinc-600 mb-1">Chọn số sao</div>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <button
-                key={s}
-                className={`text-2xl ${s <= rating ? 'text-yellow-500' : 'text-zinc-300'}`}
-                onClick={() => setRating(s)}
-                aria-label={`rate-${s}`}
-              >
-                ★
-              </button>
-            ))}
-          </div>
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-800">Đánh giá đơn hàng #{orderId}</h3>
+          <button
+            onClick={handleClose}
+            disabled={saving}
+            className="rounded-lg p-1 hover:bg-slate-100 disabled:opacity-50"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
         </div>
 
-        <div className="mt-4">
-          <div className="text-sm text-zinc-600 mb-1">Nhận xét (tuỳ chọn)</div>
-          <textarea
-            className="w-full rounded-lg border px-3 py-2"
-            rows={4}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Cảm nhận của bạn…"
-          />
-        </div>
-
-        {err && (
-          <div className="mt-3 rounded border border-red-200 bg-red-50 p-2 text-red-700 text-sm">
-            {err}
+        {/* Success State */}
+        {success ? (
+          <div className="py-8 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+              <Star className="h-6 w-6 fill-emerald-600 text-emerald-600" />
+            </div>
+            <p className="font-semibold text-slate-800">Cảm ơn bạn!</p>
+            <p className="mt-1 text-sm text-slate-600">Đánh giá của bạn đã được ghi nhận</p>
           </div>
+        ) : (
+          <>
+            {/* Rating Section */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-slate-700 mb-3">Chọn số sao</label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setRating(s)}
+                    disabled={saving}
+                    className="transition-transform hover:scale-110 disabled:opacity-50"
+                    aria-label={`Chọn ${s} sao`}
+                  >
+                    <Star
+                      className={`h-8 w-8 ${
+                        s <= rating
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'fill-slate-200 text-slate-200'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-sm text-slate-600">
+                Bạn đánh giá: <span className="font-semibold">{rating} trên 5 sao</span>
+              </p>
+            </div>
+
+            {/* Comment Section */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Nhận xét (tuỳ chọn)
+              </label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                disabled={saving}
+                rows={4}
+                maxLength={500}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50"
+                placeholder="Chia sẻ trải nghiệm của bạn…"
+              />
+              <p className="mt-1 text-xs text-slate-500">{comment.length}/500 ký tự</p>
+            </div>
+
+            {/* Error Message */}
+            {err && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {err}
+              </div>
+            )}
+          </>
         )}
 
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            className="rounded-lg border px-3 py-2"
-            onClick={() => onClose(false)}
-            disabled={saving}
-          >
-            Để sau
-          </button>
-          <button
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
-            onClick={submit}
-            disabled={saving || !orderId}
-          >
-            {saving ? 'Đang gửi…' : 'Gửi đánh giá'}
-          </button>
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-2">
+          {!success && (
+            <>
+              <button
+                onClick={handleClose}
+                disabled={saving}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
+              >
+                Để sau
+              </button>
+              <button
+                onClick={submit}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition"
+              >
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving ? 'Đang gửi…' : 'Gửi đánh giá'}
+              </button>
+            </>
+          )}
+          {success && (
+            <button
+              onClick={handleClose}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+            >
+              Đóng
+            </button>
+          )}
         </div>
       </div>
     </div>
