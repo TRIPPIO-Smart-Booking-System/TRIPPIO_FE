@@ -240,15 +240,6 @@ export default function StaffDashboardPage() {
             >
               Quản lý Room
             </Link>
-
-            {/* hồ sơ staff */}
-            <Link
-              href="/account"
-              className="rounded-2xl border border-white/60 bg-white/80 px-4 py-2.5 font-semibold text-sky-800 shadow hover:bg-white"
-              title="Xem và chỉnh sửa hồ sơ"
-            >
-              Hồ sơ Staff
-            </Link>
           </div>
         </div>
 
