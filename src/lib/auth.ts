@@ -279,6 +279,32 @@ function normalizeRoles(r?: string[] | string): string[] | undefined {
   return norm.length ? norm : undefined;
 }
 
+// /src/lib/auth.ts
+
+/** Xoá sạch thông tin đăng nhập lưu ở localStorage/sessionStorage/cookie nếu có */
+export function clearAuthStorage() {
+  try {
+    const keys = ['userId', 'accessToken', 'authToken', 'trippio_token', 'refreshToken'];
+    for (const k of keys) localStorage.removeItem(k);
+    // Nếu bạn dùng sessionStorage/cookie, dọn thêm tại đây
+    // sessionStorage.removeItem('...'); document.cookie = '...=; Max-Age=0; path=/';
+  } catch {
+    // ignore
+  }
+}
+
+/** Phát sự kiện cho các tab/components biết đã đăng xuất để tự cập nhật UI */
+export function broadcastLogout() {
+  try {
+    // Sự kiện custom trong cùng tab
+    window.dispatchEvent(new Event('auth:changed'));
+    // Kích hoạt storage event cho cross-tab (đổi 1 key tạm thời)
+    localStorage.setItem('logout_broadcast_at', String(Date.now()));
+  } catch {
+    // ignore
+  }
+}
+
 export function applyLoginPayload(p: LoginSuccessPayload): void {
   const accessToken = p.accessToken ?? p.token;
 

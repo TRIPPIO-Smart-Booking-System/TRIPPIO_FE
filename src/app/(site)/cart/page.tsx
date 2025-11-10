@@ -86,44 +86,6 @@ function getLocalMeta(userId: string, productId: string): LocalMeta | undefined 
   }
 }
 
-/* UI types */
-type Kind = 'hotel' | 'show' | 'flight';
-type DisplayItemBase = { productId: string; quantity: number; unitPrice: number; kind: Kind };
-type DisplayHotel = DisplayItemBase & {
-  kind: 'hotel';
-  hotelName?: string;
-  hotelAddress?: string;
-  roomType?: string;
-  capacity?: number;
-  checkIn?: string;
-  checkOut?: string;
-  nights?: number;
-  guests?: number;
-};
-type DisplayShow = DisplayItemBase & {
-  kind: 'show';
-  showName?: string;
-  location?: string;
-  city?: string;
-  startDate?: string;
-  endDate?: string;
-  showDate?: string;
-};
-type DisplayFlight = DisplayItemBase & {
-  kind: 'flight';
-  airline?: string;
-  from?: string;
-  to?: string;
-  departTime?: string;
-  arriveTime?: string;
-  cabin?: string;
-  passengers?: number;
-  taxesVND?: number;
-  baggageVND?: number;
-  totalVND?: number;
-};
-type DisplayItem = DisplayHotel | DisplayShow | DisplayFlight;
-
 /* ---- helper to replace the `any` casts for unit price ---- */
 type Priced = { unitPrice?: number; price?: number };
 function unitPriceOf(it: Priced): number {
@@ -134,10 +96,116 @@ function unitPriceOf(it: Priced): number {
       : 0;
 }
 
+/* ===================== DEBUG + CHECKOUT HELPERS ===================== */
+// Lấy userId từ accessToken (nếu app có token đăng nhập)
+function getAuthUserIdFromToken(): string | null {
+  try {
+    const t = localStorage.getItem('accessToken') || '';
+    if (!t.includes('.')) return null;
+    const payload = JSON.parse(atob(t.split('.')[1]));
+    return payload?.sub || payload?.userId || payload?.id || null;
+  } catch {
+    return null;
+  }
+}
+function getAccessToken(): string | null {
+  try {
+    return localStorage.getItem('accessToken') || null;
+  } catch {
+    return null;
+  }
+}
+
+// Pre-check giỏ trực tiếp trên server với đúng userId
+async function serverBasketHasItems(apiBase: string, uid: string) {
+  const token = getAccessToken();
+  const r = await fetch(`${apiBase}/api/Basket/${uid}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const js = await r.json().catch(() => ({}));
+  const n = js?.data?.items?.length ?? 0;
+  console.log('[DEBUG] serverBasketHasItems', { status: r.status, count: n, body: js });
+  return n > 0;
+}
+
+// Gọi tạo Checkout (kèm Authorization / credentials)
+type StartCheckoutOk = { checkoutUrl?: string; orderId?: string | number } | null;
+
+async function startCheckout(
+  apiBase: string,
+  payload: {
+    userId: string;
+    buyerName: string;
+    buyerEmail: string;
+    buyerPhone: string;
+    platform?: string; // 'payos'
+  }
+): Promise<{
+  ok: boolean;
+  url?: string;
+  orderId?: string | number;
+  raw?: any;
+  status: number;
+  text?: string;
+}> {
+  const token = getAccessToken();
+  const res = await fetch(`${apiBase}/api/Checkout/start`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let json: any = null;
+  try {
+    json = JSON.parse(text);
+  } catch {}
+
+  // Thử bắt các field link phổ biến
+  const tryExtract = (j: any): StartCheckoutOk => {
+    if (!j) return null;
+    const d = j.data ?? j.result ?? j;
+    const nested = d?.checkout ?? d?.payment ?? d;
+    const url =
+      nested?.checkoutUrl ||
+      nested?.checkout_url ||
+      nested?.paymentLink ||
+      nested?.payment_link ||
+      nested?.url ||
+      d?.checkoutUrl ||
+      d?.paymentLink ||
+      d?.url;
+    const orderId = nested?.orderId ?? d?.orderId ?? j?.orderId;
+    return url ? { checkoutUrl: url, orderId } : { orderId };
+  };
+
+  const extracted = tryExtract(json);
+
+  return {
+    ok: res.ok && !!extracted?.checkoutUrl,
+    url: extracted?.checkoutUrl,
+    orderId: extracted?.orderId,
+    raw: json ?? text,
+    status: res.status,
+    text: res.ok ? undefined : text,
+  };
+}
+/* =================================================================== */
+
 /* Page */
 export default function CartPage() {
   const [basket, setBasket] = useState<Basket | null>(null);
-  const [items, setItems] = useState<DisplayItem[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [payOpen, setPayOpen] = useState(false);
@@ -162,8 +230,16 @@ export default function CartPage() {
     try {
       setLoading(true);
       setErr(null);
+
+      // DEBUG: log môi trường
+      console.log('[DEBUG] API_BASE =', API_BASE);
+
       const data = await getBasket(); // { userId, items: [...] }
       setBasket(data);
+
+      // DEBUG: log userId của giỏ hiện tại
+      console.log('[DEBUG] FE basket.userId =', data?.userId);
+      console.log('[DEBUG] FE basket.items =', data?.items);
 
       const productIds = Array.from(new Set(data.items.map((i) => i.productId)));
       const rooms = await fetchRooms(productIds);
@@ -176,7 +252,7 @@ export default function CartPage() {
       const showMap = new Map(shows.map((s) => [s.id, s]));
       const flightMap = new Map(flights.map((f) => [f.id, f]));
 
-      const enriched: DisplayItem[] = data.items.map((it) => {
+      const enriched = data.items.map((it: any) => {
         const meta = getLocalMeta(data.userId, it.productId);
         const unit = unitPriceOf(it as Priced);
 
@@ -196,7 +272,7 @@ export default function CartPage() {
             checkOut: meta?.checkOut,
             nights: meta?.nights,
             guests: meta?.guests,
-          } as DisplayHotel;
+          };
         }
         const s = showMap.get(it.productId);
         if (s) {
@@ -211,7 +287,7 @@ export default function CartPage() {
             startDate: s.startDate,
             endDate: s.endDate,
             showDate: meta?.showDate,
-          } as DisplayShow;
+          };
         }
         const f = flightMap.get(it.productId);
         if (f) {
@@ -230,7 +306,7 @@ export default function CartPage() {
             taxesVND: meta?.taxesVND,
             baggageVND: meta?.baggageVND,
             totalVND: meta?.totalVND,
-          } as DisplayFlight;
+          };
         }
         return {
           kind: 'show',
@@ -238,7 +314,7 @@ export default function CartPage() {
           quantity: it.quantity,
           unitPrice: unit,
           showName: 'Sản phẩm',
-        } as DisplayShow;
+        };
       });
 
       setItems(enriched);
@@ -256,12 +332,11 @@ export default function CartPage() {
     return () => window.removeEventListener('basket:changed', h);
   }, []);
 
-  function lineTotalVND(it: DisplayItem): number {
+  function lineTotalVND(it: any): number {
     if (it.kind === 'flight') {
-      const f = it as DisplayFlight;
-      if (typeof f.totalVND === 'number') return f.totalVND!;
+      if (typeof it.totalVND === 'number') return it.totalVND!;
       const base = it.unitPrice * it.quantity;
-      const extras = (f.taxesVND ?? 0) + (f.baggageVND ?? 0);
+      const extras = (it.taxesVND ?? 0) + (it.baggageVND ?? 0);
       return base + extras;
     }
     return it.unitPrice * it.quantity;
@@ -277,7 +352,16 @@ export default function CartPage() {
     return { subtotalVND, taxVND, grandVND };
   }, [items]);
 
-  const userId = basket?.userId ?? '';
+  // DEBUG: chuẩn hoá userId dùng để thanh toán
+  const tokenUserId = (typeof window !== 'undefined' && getAuthUserIdFromToken()) || null;
+  const effectiveUserId = tokenUserId || basket?.userId || '';
+
+  // DEBUG: log userId hiệu lực & token mapping
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    console.log('[DEBUG] tokenUserId =', tokenUserId);
+    console.log('[DEBUG] effectiveUserId =', effectiveUserId);
+  }, [tokenUserId, effectiveUserId]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-16 pt-8">
@@ -301,32 +385,17 @@ export default function CartPage() {
       {!!items.length && (
         <div className="mt-6 grid gap-6 md:grid-cols-[1fr_360px]">
           <div className="space-y-4">
-            {items.map((it) => {
+            {items.map((it: any) => {
               if (it.kind === 'hotel')
                 return (
-                  <HotelCard
-                    key={it.productId}
-                    it={it as DisplayHotel}
-                    userId={userId}
-                    reload={load}
-                  />
+                  <HotelCard key={it.productId} it={it} userId={effectiveUserId} reload={load} />
                 );
               if (it.kind === 'show')
                 return (
-                  <ShowCard
-                    key={it.productId}
-                    it={it as DisplayShow}
-                    userId={userId}
-                    reload={load}
-                  />
+                  <ShowCard key={it.productId} it={it} userId={effectiveUserId} reload={load} />
                 );
               return (
-                <FlightCard
-                  key={it.productId}
-                  it={it as DisplayFlight}
-                  userId={userId}
-                  reload={load}
-                />
+                <FlightCard key={it.productId} it={it} userId={effectiveUserId} reload={load} />
               );
             })}
           </div>
@@ -395,9 +464,53 @@ export default function CartPage() {
               </div>
             </div>
 
+            {/* NÚT THANH TOÁN – gọi API trực tiếp, fallback mở Modal */}
             <button
               className="mt-4 w-full rounded-xl bg-blue-600 py-3 text-white hover:bg-blue-700"
-              onClick={() => setPayOpen(true)}
+              onClick={async () => {
+                console.log('[DEBUG] Click Pay: basket.userId =', basket?.userId);
+                console.log('[DEBUG] Click Pay: tokenUserId =', tokenUserId);
+                console.log('[DEBUG] Click Pay: effectiveUserId =', effectiveUserId);
+
+                if (!buyerName || !buyerEmail || !buyerPhone) return;
+
+                if (!effectiveUserId) {
+                  alert('Thiếu userId. Hãy đăng nhập hoặc làm mới giỏ.');
+                  return;
+                }
+
+                // 1) Pre-check giỏ trên server
+                const ok = await serverBasketHasItems(API_BASE, effectiveUserId);
+                if (!ok) {
+                  alert(
+                    'Giỏ hàng trên server đang TRỐNG đối với user này.\n' +
+                      'Có thể khác user token so với userId giỏ.'
+                  );
+                  return;
+                }
+
+                // 2) Gọi start checkout kèm Authorization/credentials
+                const res = await startCheckout(API_BASE, {
+                  userId: effectiveUserId,
+                  buyerName,
+                  buyerEmail,
+                  buyerPhone,
+                  platform: 'payos',
+                });
+
+                console.log('[DEBUG] startCheckout', res.status, res.raw);
+
+                if (res.ok && res.url) {
+                  // 3) Có link thanh toán -> mở trực tiếp
+                  window.open(res.url, '_blank', 'noopener,noreferrer');
+                  // Nếu BE trả về orderId ngay, có thể lưu lại để Review sau thanh toán
+                  if (res.orderId) setReviewOrderId(res.orderId);
+                } else {
+                  // 4) Fallback: mở modal để bạn tiếp tục debug flow cũ (nếu cần)
+                  console.warn('[WARN] startCheckout không trả link, mở Modal fallback.');
+                  setPayOpen(true);
+                }
+              }}
               disabled={!buyerName || !buyerEmail || !buyerPhone}
               title={
                 !buyerName || !buyerEmail || !buyerPhone
@@ -418,22 +531,22 @@ export default function CartPage() {
               Xoá sạch giỏ hàng
             </button>
 
-            {basket?.userId && (
+            {effectiveUserId && (
               <div className="mt-3 rounded-lg bg-zinc-50 p-2 text-[11px] text-zinc-600">
                 <Building2 className="mr-1 inline h-3 w-3" />
-                User ID: <span className="font-mono">{basket.userId}</span>
+                User ID: <span className="font-mono">{effectiveUserId}</span>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Modal PayOS */}
+      {/* Modal PayOS – fallback giữ nguyên */}
       <PaymentModal
         open={payOpen}
         onClose={() => setPayOpen(false)}
         totalVND={totals.grandVND}
-        userId={basket?.userId}
+        userId={effectiveUserId} // dùng userId đã chuẩn hoá
         buyerName={buyerName}
         buyerEmail={buyerEmail}
         buyerPhone={buyerPhone}
@@ -464,7 +577,7 @@ function HotelCard({
   userId,
   reload,
 }: {
-  it: DisplayHotel;
+  it: any;
   userId: string;
   reload: () => Promise<void>;
 }) {
@@ -523,7 +636,7 @@ function ShowCard({
   userId,
   reload,
 }: {
-  it: DisplayShow;
+  it: any;
   userId: string;
   reload: () => Promise<void>;
 }) {
@@ -571,7 +684,7 @@ function FlightCard({
   userId,
   reload,
 }: {
-  it: DisplayFlight;
+  it: any;
   userId: string;
   reload: () => Promise<void>;
 }) {
@@ -655,7 +768,7 @@ function QtyAndMoney({
   subtotalVND,
   reload,
 }: {
-  it: DisplayItem;
+  it: any;
   subtotalVND: number;
   reload: () => Promise<void>;
 }) {

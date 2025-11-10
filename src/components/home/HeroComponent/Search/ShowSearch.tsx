@@ -1,11 +1,12 @@
+// /src/components/home/HeroComponent/Search/ShowSearch.tsx
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import Counter from '../Counter';
 
-// ---------- Icons (dùng lại style từ HotelSearch) ----------
+// ---------- Icons ----------
 const PinIcon = () => (
   <svg
     width="18"
@@ -65,19 +66,22 @@ const CITY_OPTIONS: Option[] = [
 
 type Guests = { adults: number; children: number };
 
-function useOutsideClose(ref: React.RefObject<HTMLElement>, onClose: () => void) {
+// ✅ Hook không dùng RefObject: nhận trực tiếp element (HTMLElement | null)
+function useOutsideCloseEl<T extends HTMLElement>(el: T | null, onClose: () => void) {
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (el && !el.contains(e.target as Node | null)) onClose();
     };
-    const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onEsc);
     return () => {
       document.removeEventListener('mousedown', onDoc);
       document.removeEventListener('keydown', onEsc);
     };
-  }, [ref, onClose]);
+  }, [el, onClose]);
 }
 
 function todayStr() {
@@ -88,16 +92,16 @@ function todayStr() {
   return `${y}-${m}-${day}`;
 }
 
-// ---------- Guests dropdown ----------
+// ---------- Tickets dropdown ----------
 function TicketsDropdown({ value, onChange }: { value: Guests; onChange: (v: Guests) => void }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-  useOutsideClose(ref, () => setOpen(false));
+  const [el, setEl] = useState<HTMLDivElement | null>(null); // callback ref
+  useOutsideCloseEl(el, () => setOpen(false));
 
   const summary = `${value.adults} người lớn · ${value.children} trẻ em`;
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={setEl}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -172,7 +176,8 @@ export default function ShowSearch() {
       <div
         className={clsx(
           'rounded-3xl border border-teal-200/40 bg-white/80 p-3 shadow-sm backdrop-blur',
-          'supports-[backdrop-filter]:bg-white/70'
+          // sửa cảnh báo Tailwind
+          'supports-backdrop-filter:bg-white/70'
         )}
       >
         <div className="grid items-end gap-3 md:grid-cols-12">

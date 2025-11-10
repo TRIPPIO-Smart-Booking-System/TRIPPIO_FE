@@ -17,23 +17,21 @@ type Props = {
   buyerEmail?: string;
   buyerPhone?: string;
 
+  /** POST /api/Checkout/start */
   createUrlEndpoint: string;
 
   /** Endpoint kiểm tra trạng thái: GET ?orderCode=&paymentLinkId= */
   statusEndpoint?: string;
-  /** callback khi đã thanh toán */
+
   onPaid?: (info: { orderId: number | string; orderCode: number; paymentLinkId?: string }) => void;
-  /** callback khi thất bại/hết hạn/hủy */
   onFailed?: (info: {
     status: string;
     orderCode?: number | null;
     paymentLinkId?: string | null;
   }) => void;
 
-  /** Nếu đã có orderId nội bộ, truyền kèm (tùy chọn) */
+  /** Không gửi lên /start (theo spec) – chỉ dùng nội bộ app */
   orderId?: string | number;
-
-  /** Tùy chọn khoảng poll (ms) */
   pollIntervalMs?: number;
 };
 
@@ -43,10 +41,9 @@ type StartCheckoutResp = {
   data?: {
     checkoutUrl?: string;
     orderCode?: number;
-    amount?: number;
     qrCode?: string;
     paymentLinkId?: string;
-    status?: string; // PENDING...
+    status?: string;
   };
 };
 
@@ -54,19 +51,12 @@ type StatusResp = {
   code?: number;
   message?: string;
   data?: {
-    status: string; // PENDING | PAID | CANCELLED | EXPIRED | FAILED ...
+    status: string;
     orderId?: number | string;
     orderCode?: number;
     paymentLinkId?: string;
   };
 };
-
-const fmtVND = (n: number) =>
-  (n || 0).toLocaleString('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  });
 
 const PAID_SET = new Set([
   'PAID',
@@ -87,7 +77,15 @@ const FAIL_SET = new Set([
   'PAYMENT_CANCELLED',
 ]);
 
-// ---- helpers (type-safe error message) ----
+const fmtVND = (n: number) =>
+  (n || 0).toLocaleString('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  });
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function toMessage(err: unknown, fallback = 'Unknown error'): string {
   if (err instanceof Error && err.message) return err.message;
   try {
@@ -127,25 +125,22 @@ export default function PaymentModal({
   const [qrImg, setQrImg] = useState<string>('');
   const [status, setStatus] = useState<string | null>(null);
 
-  // 5 phút đếm ngược
+  // countdown 5 phút
   const [left, setLeft] = useState(300);
   const expired = left <= 0;
   const mm = Math.floor(left / 60).toString();
   const ss = (left % 60).toString().padStart(2, '0');
   const progress = ((300 - Math.max(0, left)) / 300) * 100;
 
-  // timer refs
   const secondTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const firedRef = useRef(false); // tránh onPaid lặp
+  const firedRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => void (document.body.style.overflow = prev);
   }, [open]);
 
   const tryMakeQrDataUrl = useCallback(async (payload: string): Promise<string> => {
@@ -166,7 +161,7 @@ export default function PaymentModal({
     }
   }, []);
 
-  // ---- pollStatusOnce (memoized) ----
+  // ---- Kiểm tra trạng thái (thử path rồi fallback query) ----
   const pollStatusOnce = useCallback(
     async (oCode: number, isManualCheck = false) => {
       if (!statusEndpoint) return;
@@ -176,21 +171,45 @@ export default function PaymentModal({
           setErr(null);
           setSuccessMsg(null);
         }
-
         const token =
           getAccessToken() ||
           (typeof window !== 'undefined' ? (localStorage.getItem('accessToken') ?? '') : '');
-        const qs = new URLSearchParams({ orderCode: String(oCode) });
-        if (paymentLinkId) qs.set('paymentLinkId', paymentLinkId);
-        const r = await fetch(`${statusEndpoint}?${qs.toString()}`, {
+
+        // path style: /status/{orderCode}?paymentLinkId=...
+        const pathUrl =
+          `${statusEndpoint}`.replace(/\/$/, '') +
+          `/${encodeURIComponent(String(oCode))}` +
+          (paymentLinkId ? `?paymentLinkId=${encodeURIComponent(paymentLinkId)}` : '');
+
+        let r = await fetch(pathUrl, {
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           credentials: 'include',
           cache: 'no-store',
         });
+
+        if (r.status === 404) {
+          // query style: /status?orderCode=...&paymentLinkId=...
+          const qs = new URLSearchParams({ orderCode: String(oCode) });
+          if (paymentLinkId) qs.set('paymentLinkId', paymentLinkId);
+          r = await fetch(`${statusEndpoint}?${qs.toString()}`, {
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            credentials: 'include',
+            cache: 'no-store',
+          });
+        }
+
         if (!r.ok) {
-          if (isManualCheck) throw new Error(`Không thể kiểm tra trạng thái: HTTP ${r.status}`);
+          let detail = '';
+          try {
+            detail = await r.text();
+          } catch {}
+          if (isManualCheck)
+            throw new Error(
+              `Không thể kiểm tra trạng thái: HTTP ${r.status}${detail ? ` — ${detail}` : ''}`
+            );
           return;
         }
+
         const js = (await r.json()) as StatusResp;
         const st = (js?.data?.status || js?.message || '').toUpperCase();
         if (!st) {
@@ -222,10 +241,7 @@ export default function PaymentModal({
           setSuccessMsg('⏳ Thanh toán đang chờ xử lý. Vui lòng kiểm tra lại sau.');
         }
       } catch (error) {
-        if (isManualCheck) {
-          setErr(toMessage(error, 'Không thể kiểm tra trạng thái thanh toán'));
-        }
-        // im lặng -> poll tiếp ở lần sau
+        if (isManualCheck) setErr(toMessage(error, 'Không thể kiểm tra trạng thái thanh toán'));
       } finally {
         if (isManualCheck) setChecking(false);
       }
@@ -233,19 +249,16 @@ export default function PaymentModal({
     [statusEndpoint, paymentLinkId, clearAllTimers, onPaid, orderId, onFailed]
   );
 
-  // ---- startPolling (memoized) ----
   const startPolling = useCallback(
     (oCode: number) => {
       if (!statusEndpoint) return;
-      // ngay khi tạo xong -> check 1 lần sớm
       void pollStatusOnce(oCode);
-      // lặp
       pollTimerRef.current = setInterval(() => void pollStatusOnce(oCode), pollIntervalMs);
     },
     [statusEndpoint, pollStatusOnce, pollIntervalMs]
   );
 
-  // Poll lại khi tab quay về foreground (hữu ích vì bank app chuyển app)
+  // focus về tab -> poll lại
   useEffect(() => {
     if (!open || !orderCode || !statusEndpoint) return;
     const onVis = () => {
@@ -255,7 +268,7 @@ export default function PaymentModal({
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [open, orderCode, statusEndpoint, pollStatusOnce]);
 
-  // Boot khi mở modal
+  // mở modal -> gọi /start với body đúng spec
   useEffect(() => {
     if (!open) return;
 
@@ -276,10 +289,27 @@ export default function PaymentModal({
 
     (async () => {
       try {
+        // Validate tối thiểu theo spec
+        if (!userId || !UUID_RE.test(String(userId))) {
+          throw new Error('Thiếu hoặc sai định dạng userId (yêu cầu GUID).');
+        }
+        if (!buyerName || !buyerEmail || !buyerPhone) {
+          throw new Error('Thiếu buyerName/buyerEmail/buyerPhone.');
+        }
+
         setLoading(true);
         const token =
           getAccessToken() ||
           (typeof window !== 'undefined' ? (localStorage.getItem('accessToken') ?? '') : '');
+
+        // ---- body theo đúng hình: chỉ 5 field ----
+        const body = {
+          userId: String(userId),
+          buyerName: String(buyerName),
+          buyerEmail: String(buyerEmail),
+          buyerPhone: String(buyerPhone),
+          platform: 'payos',
+        };
 
         const r = await fetch(createUrlEndpoint, {
           method: 'POST',
@@ -289,21 +319,21 @@ export default function PaymentModal({
           },
           credentials: 'include',
           cache: 'no-store',
-          body: JSON.stringify({
-            userId: userId ?? null,
-            buyerName: buyerName ?? '',
-            buyerEmail: buyerEmail ?? '',
-            buyerPhone: buyerPhone ?? '',
-            orderId: orderId ?? null,
-          }),
+          body: JSON.stringify(body),
         });
 
-        if (r.status === 401) throw new Error('Unauthorized: Thiếu/sai token đăng nhập.');
-        if (!r.ok) throw new Error(`Checkout start failed: HTTP ${r.status}`);
+        if (!r.ok) {
+          let detail = '';
+          try {
+            detail = await r.text();
+          } catch {}
+          throw new Error(`Checkout start failed: HTTP ${r.status}${detail ? ` — ${detail}` : ''}`);
+        }
 
         const data = (await r.json()) as StartCheckoutResp;
-        if (data?.code && data.code !== 200)
+        if (data?.code && data.code !== 200) {
           throw new Error(data?.message || 'Checkout start failed');
+        }
 
         const checkoutUrl = data?.data?.checkoutUrl || '';
         const rawVietQR = data?.data?.qrCode || '';
@@ -316,7 +346,7 @@ export default function PaymentModal({
         setStatus((data?.data?.status || 'PENDING').toUpperCase());
         setQrRaw(rawVietQR);
 
-        // render QR
+        // tạo QR
         let created = false;
         try {
           if (rawVietQR) {
@@ -332,10 +362,8 @@ export default function PaymentModal({
         }
         if (!created) setErr('Không tạo được QR. Vui lòng bấm “Mở trang thanh toán PayOS”.');
 
-        // Timer 1s
+        // timer & poll
         secondTimerRef.current = setInterval(() => setLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
-
-        // Poll
         if (oc && statusEndpoint) startPolling(oc);
       } catch (e) {
         setErr(toMessage(e, 'Không khởi tạo được thanh toán'));
@@ -344,9 +372,7 @@ export default function PaymentModal({
       }
     })();
 
-    return () => {
-      clearAllTimers();
-    };
+    return () => clearAllTimers();
   }, [
     open,
     createUrlEndpoint,
@@ -355,14 +381,12 @@ export default function PaymentModal({
     buyerName,
     buyerEmail,
     buyerPhone,
-    orderId,
-    pollIntervalMs, // not strictly needed but harmless
     clearAllTimers,
     tryMakeQrDataUrl,
     startPolling,
   ]);
 
-  // Dừng poll khi hết hạn
+  // hết hạn -> dừng poll
   useEffect(() => {
     if (!open) return;
     if (expired) {
@@ -449,7 +473,7 @@ export default function PaymentModal({
               </div>
             </div>
 
-            {/* Right */}
+            {/* RIGHT */}
             <div className="rounded-2xl border bg-white/80 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -501,7 +525,6 @@ export default function PaymentModal({
                   {paymentUrl ? 'Mở trang thanh toán PayOS' : 'Chưa có link PayOS'}
                 </a>
 
-                {/* Nút check trạng thái thủ công */}
                 {!!(orderCode && statusEndpoint) && (
                   <button
                     type="button"

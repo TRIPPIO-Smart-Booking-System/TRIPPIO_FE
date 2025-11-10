@@ -1,8 +1,8 @@
-// app/verify-otp/page.tsx
+// app/(auth)/verify-otp/page.tsx
 'use client';
 
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import React, { useState, useEffect, useMemo } from 'react';
 import { postJSON } from '@/lib/http';
 
 type VerifyPayload = { email: string; otp: string };
@@ -16,12 +16,22 @@ function getErrorMessage(err: unknown): string {
   return 'Đã xảy ra lỗi không xác định';
 }
 
+/** Page wrapper: Bọc Suspense để hợp lệ khi dùng useSearchParams */
 export default function VerifyOtpPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-sm text-neutral-600">Loading…</div>}>
+      <VerifyOtpInner />
+    </Suspense>
+  );
+}
+
+/** Component con: chứa toàn bộ UI/logic gốc */
+function VerifyOtpInner() {
   const sp = useSearchParams();
   const router = useRouter();
 
   const redirect = sp.get('redirect') || '';
-  const mode = sp.get('mode') || ''; // ví dụ: "reset"
+  const mode = sp.get('mode') || '';
   const [email, setEmail] = useState(sp.get('email') || '');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,8 +62,7 @@ export default function VerifyOtpPage() {
     setLoading(true);
     try {
       if (isResetFlow) {
-        // ❌ KHÔNG gọi /verify-email trong flow reset
-        // ✅ Lưu OTP cho trang /reset-password và chuyển trang
+        // Lưu OTP cho trang /reset-password và chuyển trang
         try {
           sessionStorage.setItem('lastOtpForReset', otp);
         } catch {}
@@ -66,7 +75,7 @@ export default function VerifyOtpPage() {
         return;
       }
 
-      // ✅ Flow xác minh email đăng nhập (bình thường)
+      // Flow xác minh email thông thường
       await postJSON<void>('/api/admin/auth/verify-email', { email, otp } as VerifyPayload);
       setMsg('Xác minh thành công! Đang chuyển vào trang chủ…');
       setTimeout(() => router.push('/'), 600);
@@ -83,10 +92,8 @@ export default function VerifyOtpPage() {
     setResendLoading(true);
     try {
       if (isResetFlow) {
-        // Với flow reset, gửi lại OTP bằng forgot-password
         await postJSON<void>('/api/admin/auth/forgot-password', { email });
       } else {
-        // Flow xác minh email thông thường
         await postJSON<void>('/api/admin/auth/resend-otp', { email });
       }
       setMsg('Đã gửi lại OTP vào email của bạn.');

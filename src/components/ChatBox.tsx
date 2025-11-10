@@ -29,7 +29,9 @@ function CopyButton({ text }: { text: string }) {
           await navigator.clipboard.writeText(text);
           setCopied(true);
           setTimeout(() => setCopied(false), 1200);
-        } catch {}
+        } catch {
+          /* no-op */
+        }
       }}
       title="Copy"
       className="rounded-lg border px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 active:scale-95"
@@ -38,6 +40,81 @@ function CopyButton({ text }: { text: string }) {
     </button>
   );
 }
+
+/* ----------- Markdown renderers (typed locally, no `any`) ----------- */
+type CodeRendererProps = React.HTMLAttributes<HTMLElement> & {
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+};
+type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  children?: React.ReactNode;
+};
+type TableProps = React.TableHTMLAttributes<HTMLTableElement> & {
+  children?: React.ReactNode;
+};
+type ThProps = React.ThHTMLAttributes<HTMLTableCellElement> & {
+  children?: React.ReactNode;
+};
+type TdProps = React.TdHTMLAttributes<HTMLTableCellElement> & {
+  children?: React.ReactNode;
+};
+
+const CodeRenderer = ({ inline, className, children, ...props }: CodeRendererProps) => {
+  if (inline) {
+    return (
+      <code className="rounded bg-zinc-100 px-1 py-0.5 text-[0.9em] text-zinc-800" {...props}>
+        {children}
+      </code>
+    );
+  }
+  return (
+    <pre className="overflow-x-auto rounded-xl border bg-zinc-50 p-3 text-[0.9em] leading-relaxed">
+      <code className={className} {...props}>
+        {children}
+      </code>
+    </pre>
+  );
+};
+
+const ARenderer = ({ children, ...props }: AnchorProps) => (
+  <a
+    className="text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700"
+    target="_blank"
+    rel="noreferrer"
+    {...props}
+  >
+    {children}
+  </a>
+);
+
+const TableRenderer = ({ children, ...props }: TableProps) => (
+  <div className="overflow-x-auto">
+    <table className="min-w-full border-collapse text-sm" {...props}>
+      {children}
+    </table>
+  </div>
+);
+
+const ThRenderer = ({ children, ...props }: ThProps) => (
+  <th className="border-b bg-zinc-50 px-3 py-2 text-left font-semibold" {...props}>
+    {children}
+  </th>
+);
+
+const TdRenderer = ({ children, ...props }: TdProps) => (
+  <td className="border-b px-3 py-2 align-top" {...props}>
+    {children}
+  </td>
+);
+
+const MD_COMPONENTS = {
+  code: CodeRenderer,
+  a: ARenderer,
+  table: TableRenderer,
+  th: ThRenderer,
+  td: TdRenderer,
+};
 
 /* ----------------------------- Message Item ---------------------------- */
 function MessageBubble({ msg }: { msg: Msg }) {
@@ -61,57 +138,7 @@ function MessageBubble({ msg }: { msg: Msg }) {
             isUser ? 'prose-invert' : ''
           )}
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              code({ inline, children, ...props }) {
-                if (inline) {
-                  return (
-                    <code
-                      className="rounded bg-zinc-100 px-1 py-0.5 text-[0.9em] text-zinc-800"
-                      {...props}
-                    >
-                      {children}
-                    </code>
-                  );
-                }
-                return (
-                  <pre className="overflow-x-auto rounded-xl border bg-zinc-50 p-3 text-[0.9em] leading-relaxed">
-                    <code {...props}>{children}</code>
-                  </pre>
-                );
-              },
-              a({ children, ...props }) {
-                return (
-                  <a
-                    className="text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700"
-                    target="_blank"
-                    rel="noreferrer"
-                    {...props}
-                  >
-                    {children}
-                  </a>
-                );
-              },
-              table({ children }) {
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse text-sm">{children}</table>
-                  </div>
-                );
-              },
-              th({ children }) {
-                return (
-                  <th className="border-b bg-zinc-50 px-3 py-2 text-left font-semibold">
-                    {children}
-                  </th>
-                );
-              },
-              td({ children }) {
-                return <td className="border-b px-3 py-2 align-top">{children}</td>;
-              },
-            }}
-          >
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
             {msg.content}
           </ReactMarkdown>
         </div>
@@ -133,6 +160,15 @@ function MessageBubble({ msg }: { msg: Msg }) {
   );
 }
 
+/* --------------------- Stable wrappers (hoisted) --------------------- */
+const ModalOuter: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="h-full w-full min-h-0">{children}</div>
+);
+
+const PageOuter: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="mx-auto max-w-2xl p-4">{children}</div>
+);
+
 /* ------------------------------- Component ------------------------------ */
 export default function ChatBox({ variant = 'page', apiUrl = '/api/ai/stream' }: ChatBoxProps) {
   const [messages, setMessages] = useState<Msg[]>([
@@ -140,24 +176,27 @@ export default function ChatBox({ variant = 'page', apiUrl = '/api/ai/stream' }:
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const Wrapper = variant === 'modal' ? ModalOuter : PageOuter;
 
   useLayoutEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
   // auto-resize textarea
-  const resize = () => {
+  const resize = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = '0px';
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-  };
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, []);
   useEffect(() => {
     resize();
-  }, [input]);
+  }, [input, resize]);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -167,19 +206,21 @@ export default function ChatBox({ variant = 'page', apiUrl = '/api/ai/stream' }:
     setMessages((s) => [...s, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
     setInput('');
     setLoading(true);
-    abortRef.current = new AbortController();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history }),
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error('Stream failed');
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -212,18 +253,15 @@ export default function ChatBox({ variant = 'page', apiUrl = '/api/ai/stream' }:
     }
   };
 
-  // wrapper cho page vs modal
-  const Outer =
-    variant === 'modal'
-      ? ({ children }: { children: React.ReactNode }) => (
-          <div className="h-full w-full min-h-0">{children}</div>
-        )
-      : ({ children }: { children: React.ReactNode }) => (
-          <div className="mx-auto max-w-2xl p-4">{children}</div>
-        );
+  // cleanup abort khi unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   return (
-    <Outer>
+    <Wrapper>
       <div className="flex h-full min-h-0 flex-col rounded-3xl border bg-white shadow-sm">
         {/* Header: ẩn trong modal */}
         {variant !== 'modal' && (
@@ -241,7 +279,7 @@ export default function ChatBox({ variant = 'page', apiUrl = '/api/ai/stream' }:
           </div>
         )}
 
-        {/* Messages: modal dùng flex-1 + min-h-0; page dùng height cố định */}
+        {/* Messages */}
         <div
           className={classNames(
             variant === 'modal'
@@ -266,7 +304,7 @@ export default function ChatBox({ variant = 'page', apiUrl = '/api/ai/stream' }:
             onKeyDown={onKeyDown}
             placeholder="Nhập câu hỏi… (Shift+Enter xuống dòng)"
             rows={1}
-            className="min-h-[44px] max-h-52 flex-1 resize-none rounded-2xl border px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
+            className="min-h-11 max-h-52 flex-1 resize-none rounded-2xl border px-3 py-2 outline-none focus:ring-2 focus:ring-sky-400"
           />
           {loading ? (
             <button
@@ -286,6 +324,6 @@ export default function ChatBox({ variant = 'page', apiUrl = '/api/ai/stream' }:
           )}
         </div>
       </div>
-    </Outer>
+    </Wrapper>
   );
 }
