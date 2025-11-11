@@ -266,14 +266,26 @@ export default function Header() {
               >
                 {/* === Avatar khi login, fallback icon khi chưa có === */}
                 {isLoggedIn && avatarSrc ? (
-                  <Image
-                    src={avatarSrc}
-                    alt={me?.fullName || 'Avatar'}
-                    width={28}
-                    height={28}
-                    className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30"
-                    unoptimized
-                  />
+                  <div className="relative h-7 w-7 flex-shrink-0">
+                    <Image
+                      src={avatarSrc}
+                      alt={me?.fullName || 'Avatar'}
+                      width={28}
+                      height={28}
+                      className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30"
+                      unoptimized
+                      onError={(e) => {
+                        // Fallback to default avatar on load error
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/30"
+                      style={{ display: avatarSrc ? 'none' : 'flex' }}
+                    >
+                      {me?.firstName?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                  </div>
                 ) : (
                   <User className="h-5 w-5" />
                 )}
