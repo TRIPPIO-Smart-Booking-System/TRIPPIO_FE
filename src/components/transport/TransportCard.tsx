@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useMemo, useState, useEffect } from 'react';
 import type { ApiTransport, ApiTransportTrip } from '@/lib/dataCache';
-import { loadFlights, getRandomItem, type FlightData } from '@/lib/csvLoader';
+import { getTransportImageByType } from '@/lib/imageLoader';
 
 type Currency = 'VND' | 'USD';
 
@@ -87,16 +87,13 @@ export default function TransportCard({
   const hasTrips = trips.length > 0;
   const [open, setOpen] = useState<boolean>(defaultOpen && hasTrips);
   const art = getArt(transport.transportType);
-  const [randomFlightImage, setRandomFlightImage] = useState<FlightData | null>(null);
+  const [randomFlightImage, setRandomFlightImage] = useState<string>('');
 
   useEffect(() => {
-    // Load random flight image once when component mounts
-    (async () => {
-      const flights = await loadFlights();
-      const randomFlight = getRandomItem(flights);
-      setRandomFlightImage(randomFlight || null);
-    })();
-  }, []);
+    // Get transport image based on type
+    const img = getTransportImageByType(transport.transportType);
+    setRandomFlightImage(img);
+  }, [transport.transportType]);
 
   return (
     <article
@@ -118,7 +115,7 @@ export default function TransportCard({
       <div className="relative h-32 w-full sm:h-36">
         <div className={`absolute inset-0 bg-gradient-to-r ${art.gradient}`} />
         <Image
-          src={randomFlightImage?.image_url || art.banner}
+          src={randomFlightImage || art.banner}
           alt={`${transport.transportType} banner`}
           fill
           className="object-cover mix-blend-multiply opacity-90"

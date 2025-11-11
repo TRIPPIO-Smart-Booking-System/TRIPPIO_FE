@@ -5,36 +5,37 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { ApiShow, formatDateTime, formatMoney } from '@/data/show.api';
-import { loadShows, getRandomItem, type ShowData } from '@/lib/csvLoader';
+import { getShowImageByIndex } from '@/lib/imageLoader';
 
 type Props = {
   show: ApiShow;
   currency?: 'VND' | 'USD';
-  /** Optional controlled expand state (for “chỉ mở 1 card”) */
   isOpen?: boolean;
-  /** Optional toggle handler from parent */
   onToggle?: () => void;
+  imageIndex?: number;
 };
 
-export default function ShowCard({ show, currency = 'VND', isOpen, onToggle }: Props) {
+export default function ShowCard({
+  show,
+  currency = 'VND',
+  isOpen,
+  onToggle,
+  imageIndex = 0,
+}: Props) {
   const soldOut = show.availableTickets <= 0;
-  const [randomShowImage, setRandomShowImage] = useState<ShowData | null>(null);
+  const [showImage, setShowImage] = useState<string>('');
 
   useEffect(() => {
-    // Load random show image once when component mounts
-    (async () => {
-      const shows = await loadShows();
-      const randomShow = getRandomItem(shows);
-      setRandomShowImage(randomShow || null);
-    })();
-  }, []);
+    const img = getShowImageByIndex(imageIndex);
+    setShowImage(img);
+  }, [imageIndex]);
 
   return (
     <article className="group overflow-hidden rounded-2xl border bg-white shadow transition hover:shadow-lg">
       {/* Image Banner */}
       <div className="relative h-40 w-full bg-gray-200">
         <Image
-          src={randomShowImage?.image_url || '/img/placeholder.jpg'}
+          src={showImage || '/images/show/show1.webp'}
           alt={show.name}
           fill
           sizes="(max-width: 768px) 100vw, 400px"

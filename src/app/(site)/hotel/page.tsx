@@ -6,7 +6,7 @@ import Image from 'next/image';
 import HotelSearchBar, { HotelSearchQuery } from '@/components/hotel/HotelSearchBar';
 import HotelCard from '@/components/hotel/HotelCard';
 import type { ApiHotel, ApiRoom } from '@/data/hotel.types';
-import { loadHotels, getRandomItem, type HotelData } from '@/lib/csvLoader';
+import { getHotelImageByIndex } from '@/lib/imageLoader';
 import { getCachedHotels, preloadAllData } from '@/lib/dataCache';
 
 type SortKey = 'popularity' | 'priceAsc' | 'priceDesc' | 'ratingDesc';
@@ -92,17 +92,12 @@ export default function HotelsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>('popularity');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [headerImage, setHeaderImage] = useState<HotelData | null>(null);
+  const [headerImage, setHeaderImage] = useState<string>('');
 
-  // Load random hotel image for header
+  // Load hotel header image
   useEffect(() => {
-    (async () => {
-      const hotelImages = await loadHotels();
-      if (hotelImages.length > 0) {
-        const randomHotel = getRandomItem(hotelImages);
-        setHeaderImage(randomHotel || null);
-      }
-    })();
+    const headerImg = getHotelImageByIndex(0); // First hotel image
+    setHeaderImage(headerImg);
   }, []);
 
   useEffect(() => {
@@ -196,12 +191,12 @@ export default function HotelsPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Banner with Random Hotel Image */}
+      {/* Hero Banner with Hotel Image */}
       {headerImage && (
         <div className="relative h-48 w-full overflow-hidden md:h-64 lg:h-80">
           <Image
-            src={headerImage.image_url}
-            alt={headerImage.name}
+            src={headerImage}
+            alt="Hotel header"
             fill
             className="object-cover"
             unoptimized
@@ -209,8 +204,8 @@ export default function HotelsPage() {
           />
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">🏨 {headerImage.name}</h1>
-            <p className="mt-2 text-sm md:text-base">{headerImage.city}</p>
+            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">🏨 Khách sạn</h1>
+            <p className="mt-2 text-sm md:text-base">Tìm và đặt phòng khách sạn hoàn hảo cho bạn</p>
           </div>
         </div>
       )}
@@ -348,7 +343,7 @@ export default function HotelsPage() {
           <>
             {viewMode === 'grid' ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((hotel) => (
+                {filtered.map((hotel, index) => (
                   <HotelCard
                     key={hotel.id}
                     hotel={hotel}
@@ -357,12 +352,13 @@ export default function HotelsPage() {
                     adults={query.adults}
                     childrenCount={query.children}
                     roomsNeeded={query.rooms}
+                    imageIndex={index}
                   />
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
-                {filtered.map((hotel) => (
+                {filtered.map((hotel, index) => (
                   <div key={hotel.id} className="rounded-2xl border bg-white p-2 shadow-sm">
                     <HotelCard
                       hotel={hotel}
@@ -371,6 +367,7 @@ export default function HotelsPage() {
                       adults={query.adults}
                       childrenCount={query.children}
                       roomsNeeded={query.rooms}
+                      imageIndex={index}
                     />
                   </div>
                 ))}

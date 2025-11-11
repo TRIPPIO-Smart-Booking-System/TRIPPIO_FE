@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import TransportSearchBar, { TransportSearch } from '@/components/transport/TransportSearchBar';
 import TransportCard from '@/components/transport/TransportCard';
-import { loadFlights, getRandomItem, type FlightData } from '@/lib/csvLoader';
+import { getTransportHeaderImage } from '@/lib/imageLoader';
 import {
   getCachedTransports,
   getCachedTrips,
@@ -30,20 +30,15 @@ export default function TransportPage() {
   const [trips, setTrips] = useState<ApiTransportTrip[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [headerImage, setHeaderImage] = useState<FlightData | null>(null);
+  const [headerImage, setHeaderImage] = useState<string>('');
   const [transportTypeFilter, setTransportTypeFilter] = useState<'airline' | 'bus' | 'train'>(
     'airline'
   );
 
-  // Load random flight image for header
+  // Load transport header image
   useEffect(() => {
-    (async () => {
-      const flightImages = await loadFlights();
-      if (flightImages.length > 0) {
-        const randomFlight = getRandomItem(flightImages);
-        setHeaderImage(randomFlight || null);
-      }
-    })();
+    const headerImg = getTransportHeaderImage();
+    setHeaderImage(headerImg);
   }, []);
 
   useEffect(() => {
@@ -149,12 +144,12 @@ export default function TransportPage() {
   return (
     // 🔒 chặn tràn ngang + full width
     <div className="relative min-h-screen w-full overflow-x-clip">
-      {/* Hero Banner with Random Flight Image */}
+      {/* Hero Banner with Transport Header Image */}
       {headerImage && (
         <div className="relative h-48 w-full overflow-hidden md:h-64 lg:h-80">
           <Image
-            src={headerImage.image_url}
-            alt={headerImage.name}
+            src={headerImage}
+            alt="Transport header"
             fill
             className="object-cover"
             unoptimized
@@ -162,8 +157,8 @@ export default function TransportPage() {
           />
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">✈️ {headerImage.name}</h1>
-            <p className="mt-2 text-sm md:text-base">{headerImage.route}</p>
+            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">✈️ Đặt vé phương tiện</h1>
+            <p className="mt-2 text-sm md:text-base">Tìm vé máy bay, tàu hỏa, xe buýt dễ dàng</p>
           </div>
         </div>
       )}

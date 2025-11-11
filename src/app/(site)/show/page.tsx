@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import ShowCard from '@/components/show/ShowCard';
-import { loadShows, getRandomItem, type ShowData } from '@/lib/csvLoader';
+import { getShowImageByIndex } from '@/lib/imageLoader';
 import { getCachedShows, preloadAllData, type ApiShow } from '@/lib/dataCache';
 
 type Filters = {
@@ -16,7 +16,7 @@ export default function ShowListPage() {
   const [shows, setShows] = useState<ApiShow[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
-  const [headerImage, setHeaderImage] = useState<ShowData | null>(null);
+  const [headerImage, setHeaderImage] = useState<string>('');
 
   const [filters, setFilters] = useState<Filters>({
     city: '',
@@ -27,15 +27,10 @@ export default function ShowListPage() {
   // chỉ mở 1 card
   const [openId, setOpenId] = useState<string | null>(null);
 
-  // Load random show image for header
+  // Load show header image
   useEffect(() => {
-    (async () => {
-      const showImages = await loadShows();
-      if (showImages.length > 0) {
-        const randomShow = getRandomItem(showImages);
-        setHeaderImage(randomShow || null);
-      }
-    })();
+    const headerImg = getShowImageByIndex(0); // First show image
+    setHeaderImage(headerImg);
   }, []);
 
   useEffect(() => {
@@ -127,12 +122,12 @@ export default function ShowListPage() {
 
   return (
     <div className="relative">
-      {/* Hero Banner with Random Show Image */}
+      {/* Hero Banner with Show Image */}
       {headerImage && (
         <div className="relative h-48 w-full overflow-hidden md:h-64 lg:h-80">
           <Image
-            src={headerImage.image_url}
-            alt={headerImage.name}
+            src={headerImage}
+            alt="Show header"
             fill
             className="object-cover"
             unoptimized
@@ -140,8 +135,8 @@ export default function ShowListPage() {
           />
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">🎭 {headerImage.name}</h1>
-            <p className="mt-2 text-sm md:text-base">{headerImage.category}</p>
+            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">🎭 Buổi biểu diễn</h1>
+            <p className="mt-2 text-sm md:text-base">Những buổi biểu diễn hấp dẫn tại Việt Nam</p>
           </div>
         </div>
       )}
@@ -254,7 +249,7 @@ export default function ShowListPage() {
 
         {/* GRID */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((show) => {
+          {filtered.map((show, index) => {
             const id = String(show.id);
             return (
               <ShowCard
@@ -263,6 +258,7 @@ export default function ShowListPage() {
                 currency={filters.currency}
                 isOpen={openId === id}
                 onToggle={() => setOpenId((prev) => (prev === id ? null : id))}
+                imageIndex={index}
               />
             );
           })}
