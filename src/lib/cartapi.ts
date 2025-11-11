@@ -92,7 +92,7 @@ function normalizeItems(itemsIn: ApiBasketItemIn[] = []): BasketItem[] {
 /* ---------------- API ---------------- */
 export async function getBasket(): Promise<Basket> {
   const userId = getUserId();
-  const res = await fetch(`${API_BASE}/api/Basket/${encodeURIComponent(userId)}`, {
+  const res = await fetch(`${API_BASE}/api/Basket/${userId}`, {
     headers: buildHeaders({ Accept: 'application/json' }),
     credentials: 'include',
     cache: 'no-store',
@@ -111,7 +111,7 @@ export async function addItem(item: Pick<BasketItem, 'productId' | 'quantity' | 
     unitPrice: item.unitPrice, // khóa chuẩn
     price: item.unitPrice, // tương thích ngược (nếu BE cũ dùng price)
   };
-  const res = await fetch(`${API_BASE}/api/Basket/${encodeURIComponent(userId)}/items`, {
+  const res = await fetch(`${API_BASE}/api/Basket/${userId}/items`, {
     method: 'POST',
     headers: buildHeaders({ 'Content-Type': 'application/json', Accept: '*/*' }),
     credentials: 'include',
@@ -123,7 +123,7 @@ export async function addItem(item: Pick<BasketItem, 'productId' | 'quantity' | 
 
 export async function updateQuantity(productId: string, quantity: number) {
   const userId = getUserId();
-  const res = await fetch(`${API_BASE}/api/Basket/${encodeURIComponent(userId)}/items/quantity`, {
+  const res = await fetch(`${API_BASE}/api/Basket/${userId}/items/quantity`, {
     method: 'PUT',
     headers: buildHeaders({ 'Content-Type': 'application/json', Accept: '*/*' }),
     credentials: 'include',
@@ -136,21 +136,18 @@ export async function updateQuantity(productId: string, quantity: number) {
 /** Xoá 1 sản phẩm. Có thể truyền userId (ưu tiên), nếu bỏ qua sẽ lấy từ localStorage. */
 export async function removeItem(productId: string, userIdOverride?: string) {
   const userId = userIdOverride ?? getUserId();
-  const res = await fetch(
-    `${API_BASE}/api/Basket/${encodeURIComponent(userId)}/items/${encodeURIComponent(productId)}`,
-    {
-      method: 'DELETE',
-      headers: buildHeaders({ Accept: '*/*' }),
-      credentials: 'include',
-    }
-  );
+  const res = await fetch(`${API_BASE}/api/Basket/${userId}/items/${productId}`, {
+    method: 'DELETE',
+    headers: buildHeaders({ Accept: '*/*' }),
+    credentials: 'include',
+  });
   if (!res.ok) throw new Error(`Basket REMOVE ${res.status}`);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('basket:changed'));
 }
 
 export async function clearBasket(userIdOverride?: string) {
   const userId = userIdOverride ?? getUserId();
-  const res = await fetch(`${API_BASE}/api/Basket/${encodeURIComponent(userId)}`, {
+  const res = await fetch(`${API_BASE}/api/Basket/${userId}`, {
     method: 'DELETE',
     headers: buildHeaders({ Accept: '*/*' }),
     credentials: 'include',
