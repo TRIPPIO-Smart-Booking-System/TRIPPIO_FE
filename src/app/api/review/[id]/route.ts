@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
     const token = request.headers.get('authorization');
-    const reviewId = params.id;
+    const reviewId = id;
 
     if (!token) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
