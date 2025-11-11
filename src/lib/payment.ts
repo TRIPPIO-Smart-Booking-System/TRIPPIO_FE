@@ -5,7 +5,7 @@ export type PaymentRecord = {
   id: string; // paymentId
   orderId: string;
   amountVND: number;
-  method?: 'VNPAY' | 'MOMO' | 'CARD' | 'CASH' | string;
+  method?: 'PayOS' | 'MOMO' | 'CARD' | 'CASH' | string;
   status: PaymentStatus;
   createdAt: string; // ISO
   updatedAt?: string; // ISO

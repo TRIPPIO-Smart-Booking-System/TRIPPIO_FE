@@ -911,10 +911,14 @@ export default function AdminDashboardPage() {
                           Trạng Thái
                         </div>
                         <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${badgePayment('Paid')}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${badgePayment(p.status)}`}
                         >
-                          {iconPayment('Paid')}
-                          Đã thanh toán
+                          {iconPayment(p.status)}
+                          {p.status === 'Paid' && 'Đã thanh toán'}
+                          {p.status === 'Pending' && 'Đang xử lý'}
+                          {p.status === 'Failed' && 'Thất bại'}
+                          {p.status === 'Refunded' && 'Đã hoàn tiền'}
+                          {p.status === 'Expired' && 'Hết hạn'}
                         </span>
                       </div>
 
