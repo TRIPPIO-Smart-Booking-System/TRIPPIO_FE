@@ -911,10 +911,10 @@ export default function AdminDashboardPage() {
                           Trạng Thái
                         </div>
                         <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${badgePayment(p.status)}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${badgePayment('Paid')}`}
                         >
-                          {iconPayment(p.status)}
-                          {p.status}
+                          {iconPayment('Paid')}
+                          Đã thanh toán
                         </span>
                       </div>
 
