@@ -476,7 +476,7 @@ export default function CartPage() {
                 if (!buyerName || !buyerEmail || !buyerPhone) return;
 
                 if (!effectiveUserId) {
-                  alert('Thiếu userId. Hãy đăng nhập hoặc làm mới giỏ.');
+                  showError('Thiếu userId. Hãy đăng nhập hoặc làm mới giỏ.');
                   return;
                 }
 
