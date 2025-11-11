@@ -621,9 +621,10 @@ export default function OrdersPageVipPlus() {
                     <div className="col-span-2 font-semibold">{fmtVND(r.totalVND)}</div>
                     <div className="col-span-2">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${pillClass('Paid')}`}
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${pillClass(r.status)}`}
+                        title={`Trạng thái: ${r.status}`}
                       >
-                        {pillIcon('Paid')} Paid
+                        {pillIcon(r.status)} {r.status}
                       </span>
                     </div>
                     <div className="col-span-2 text-right text-[12px] text-slate-600">
