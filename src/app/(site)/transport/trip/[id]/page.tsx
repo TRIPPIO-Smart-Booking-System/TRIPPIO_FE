@@ -598,7 +598,7 @@ export default function TransportTripDetailPage() {
                       : 'bg-gradient-to-br from-orange-500 to-amber-500 text-white hover:brightness-105 active:brightness-95'
                   }`}
               >
-                {canBook ? 'Add to cart' : 'Hết chỗ / số lượng vượt quá'}
+                {canBook ? 'Thêm vào giỏ hàng' : 'Hết chỗ / số lượng vượt quá'}
               </button>
 
               <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
