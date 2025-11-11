@@ -4,7 +4,9 @@
 import { useParams, useSearchParams } from 'next/navigation';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { showSuccess, showError } from '@/lib/toast';
+import { getHotelImageByIndex, getRoomImages } from '@/lib/imageLoader';
 import {
   MapPin,
   Star,
@@ -768,32 +770,52 @@ function HeroHeader({
           </div>
         </div>
       </div>
-
-      {/* mini gallery */}
-      <div className="grid grid-cols-2 gap-1 border-t sm:grid-cols-4">
-        {['/hotel1.jpg', '/hotel2.jpg', '/hotel3.jpg', '/hotel4.jpg'].map((src, i) => (
-          <div
-            key={i}
-            className="h-28 w-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${src})` }}
-          >
-            <div className="h-full w-full bg-gradient-to-t from-black/10 to-transparent" />
-          </div>
-        ))}
-      </div>
     </motion.div>
   );
 }
 
 function Gallery() {
+  const roomImages = getRoomImages(0); // Use first room's images
+  const [mainImage, setMainImage] = useState<string>(
+    roomImages[0] || '/images/roomhotel/room1.jpg'
+  );
+  const [isLoading, setIsLoading] = useState(true);
+
   return (
     <div className="grid grid-cols-4 gap-2">
+      {/* Main large image */}
       <div className="col-span-4 overflow-hidden rounded-2xl border bg-zinc-100 sm:col-span-2 sm:row-span-2">
-        <div className="aspect-[16/10] w-full bg-gradient-to-br from-zinc-50 to-zinc-200" />
+        <div className="relative aspect-[16/10] w-full">
+          {isLoading && (
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-50 to-zinc-200" />
+          )}
+          <Image
+            src={mainImage}
+            alt="Hotel main gallery"
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+            onLoadingComplete={() => setIsLoading(false)}
+          />
+        </div>
       </div>
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="overflow-hidden rounded-2xl border bg-zinc-100">
-          <div className="aspect-[4/3] w-full bg-gradient-to-br from-zinc-50 to-zinc-200" />
+      {/* Thumbnail images */}
+      {roomImages.map((src, i) => (
+        <div
+          key={i}
+          className="overflow-hidden rounded-2xl border bg-zinc-100 cursor-pointer hover:ring-2 ring-blue-400 transition"
+          onClick={() => setMainImage(src)}
+        >
+          <div className="relative aspect-[4/3] w-full">
+            <Image
+              src={src}
+              alt={`Room gallery ${i + 1}`}
+              fill
+              className="object-cover hover:scale-105 transition"
+              unoptimized
+            />
+          </div>
         </div>
       ))}
     </div>
