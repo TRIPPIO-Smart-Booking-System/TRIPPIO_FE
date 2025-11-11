@@ -966,13 +966,42 @@ function RoomDetailPanel({
   const perNight = room.pricePerNight;
   const subtotal = perNight * qty * nights;
   const tax = Math.round(subtotal * 0.1);
+  const [mainImage, setMainImage] = React.useState<string>('');
+  const [imageLoading, setImageLoading] = React.useState(true);
+
+  // Get room images for this room
+  const roomImages = useMemo(() => {
+    // Extract room index from room ID or use sequence
+    const roomIndex = parseInt(room.id.substring(0, 2), 16) % 10;
+    return getRoomImages(roomIndex);
+  }, [room.id]);
+
+  React.useEffect(() => {
+    if (roomImages && roomImages.length > 0) {
+      setMainImage(roomImages[0]);
+      setImageLoading(false);
+    }
+  }, [roomImages]);
 
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="grid gap-4 p-4 md:grid-cols-3">
-        {/* (mock) image */}
+        {/* image */}
         <div className="md:col-span-1">
-          <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-zinc-100" />
+          {imageLoading ? (
+            <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-gradient-to-br from-zinc-200 via-zinc-100 to-zinc-200 animate-pulse" />
+          ) : (
+            <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-zinc-100 relative">
+              <Image
+                src={mainImage}
+                alt={room.roomType}
+                fill
+                className="object-cover"
+                onError={() => setMainImage('/images/hotel/hotel1.jpg')}
+                priority
+              />
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-2">
