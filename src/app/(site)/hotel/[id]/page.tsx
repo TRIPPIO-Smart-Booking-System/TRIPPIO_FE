@@ -4,6 +4,7 @@
 import { useParams, useSearchParams } from 'next/navigation';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { showSuccess, showError } from '@/lib/toast';
 import {
   MapPin,
   Star,
@@ -433,16 +434,19 @@ export default function HotelDetailPage() {
                 onAddToCart={async () => {
                   const q = qty[selectedRoom.id] ?? 1;
                   const errMsg = ensureDatesValid() || checkRoomConstraints(selectedRoom, q);
-                  if (errMsg) return alert(errMsg);
+                  if (errMsg) {
+                    showError(errMsg);
+                    return;
+                  }
                   try {
                     await apiAddToCart(selectedRoom, q);
                     addLocalCartMirror(hotel, selectedRoom, q);
-                    alert('Đã thêm vào giỏ hàng!');
+                    showSuccess('Đã thêm vào giỏ hàng!');
                   } catch (e) {
                     const msg = (e as Error).message || '';
                     if (msg.includes('→ 401'))
-                      alert('Bạn cần đăng nhập để thêm vào giỏ hàng (401).');
-                    else alert(`Thêm giỏ thất bại: ${msg}`);
+                      showError('Bạn cần đăng nhập để thêm vào giỏ hàng (401).');
+                    else showError(`Thêm giỏ thất bại: ${msg}`);
                   }
                 }}
                 onBookNow={async () => {
@@ -532,18 +536,24 @@ export default function HotelDetailPage() {
                                   disabled={disableAll}
                                   onClick={async () => {
                                     const dateErr = ensureDatesValid();
-                                    if (dateErr) return alert(dateErr);
+                                    if (dateErr) {
+                                      showError(dateErr);
+                                      return;
+                                    }
                                     const constraint = checkRoomConstraints(r, q);
-                                    if (constraint) return alert(constraint);
+                                    if (constraint) {
+                                      showError(constraint);
+                                      return;
+                                    }
                                     try {
                                       await apiAddToCart(r, q);
                                       addLocalCartMirror(hotel, r, q);
-                                      alert('Đã thêm vào giỏ hàng!');
+                                      showSuccess('Đã thêm vào giỏ hàng!');
                                     } catch (e) {
                                       const msg = (e as Error).message || '';
                                       if (msg.includes('→ 401'))
-                                        alert('Bạn cần đăng nhập để thêm vào giỏ hàng (401).');
-                                      else alert(`Thêm giỏ thất bại: ${msg}`);
+                                        showError('Bạn cần đăng nhập để thêm vào giỏ hàng (401).');
+                                      else showError(`Thêm giỏ thất bại: ${msg}`);
                                     }
                                   }}
                                 >

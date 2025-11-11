@@ -3,6 +3,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { showSuccess, showError } from '@/lib/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
 
@@ -131,15 +132,15 @@ export default function ShowDetailPage() {
     const userId = getUserId();
     const token = getAuthToken();
     if (!userId || !token) {
-      alert('Bạn cần đăng nhập trước khi thêm vào giỏ hàng.');
+      showError('Bạn cần đăng nhập trước khi thêm vào giỏ hàng.');
       return;
     }
     if (qty < 1) {
-      alert('Số lượng phải ≥ 1');
+      showError('Số lượng phải ≥ 1');
       return;
     }
     if (qty > show.availableTickets) {
-      alert(`Vượt quá số vé còn lại (${show.availableTickets}).`);
+      showError(`Vượt quá số vé còn lại (${show.availableTickets}).`);
       return;
     }
 
@@ -152,13 +153,13 @@ export default function ShowDetailPage() {
         // price: show.price,   // (tuỳ chọn) backward-compat
       });
       window.dispatchEvent(new CustomEvent('basket:changed'));
-      alert('Đã thêm vào giỏ hàng!');
+      showSuccess('Đã thêm vào giỏ hàng!');
     } catch (e) {
       const msg = (e as Error).message || '';
       if (msg.includes('→ 401')) {
-        alert('Phiên đăng nhập hết hạn hoặc thiếu token (401). Vui lòng đăng nhập lại.');
+        showError('Phiên đăng nhập hết hạn hoặc thiếu token (401). Vui lòng đăng nhập lại.');
       } else {
-        alert(`Thêm giỏ thất bại: ${msg}`);
+        showError(`Thêm giỏ thất bại: ${msg}`);
       }
     }
   }

@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Basket, clearBasket, getBasket, removeItem, updateQuantity } from '@/lib/cartapi';
+import { showSuccess, showError } from '@/lib/toast';
 import PaymentModal from '@/components/PaymentModal';
 import ReviewModal from '@/components/ReviewModal';
 
@@ -475,7 +476,7 @@ export default function CartPage() {
                 if (!buyerName || !buyerEmail || !buyerPhone) return;
 
                 if (!effectiveUserId) {
-                  alert('Thiếu userId. Hãy đăng nhập hoặc làm mới giỏ.');
+                  showError('Thiếu userId. Hãy đăng nhập hoặc làm mới giỏ.');
                   return;
                 }
 
@@ -581,6 +582,7 @@ function HotelCard({
   userId: string;
   reload: () => Promise<void>;
 }) {
+  const [deleting, setDeleting] = useState(false);
   const subtotalVND = it.unitPrice * it.quantity;
   return (
     <div className="rounded-xl border bg-white p-4 shadow-sm">
@@ -613,13 +615,21 @@ function HotelCard({
           )}
         </div>
         <button
-          className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50"
-          disabled={!userId}
+          className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-50"
+          disabled={!userId || deleting}
           onClick={async () => {
             if (!userId) return;
             if (!confirm('Xoá sản phẩm này khỏi giỏ?')) return;
-            await removeItem(userId, it.productId);
-            await reload();
+            try {
+              setDeleting(true);
+              await removeItem(it.productId, userId);
+              showSuccess('Đã xoá sản phẩm khỏi giỏ');
+              await reload();
+            } catch (e) {
+              showError(`Xoá thất bại: ${(e as Error).message}`);
+            } finally {
+              setDeleting(false);
+            }
           }}
           title="Xoá mục này"
         >
@@ -640,6 +650,7 @@ function ShowCard({
   userId: string;
   reload: () => Promise<void>;
 }) {
+  const [deleting, setDeleting] = useState(false);
   const subtotalVND = it.unitPrice * it.quantity;
   return (
     <div className="rounded-xl border bg-white p-4 shadow-sm">
@@ -661,13 +672,21 @@ function ShowCard({
           )}
         </div>
         <button
-          className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50"
-          disabled={!userId}
+          className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-50"
+          disabled={!userId || deleting}
           onClick={async () => {
             if (!userId) return;
             if (!confirm('Xoá sản phẩm này khỏi giỏ?')) return;
-            await removeItem(userId, it.productId);
-            await reload();
+            try {
+              setDeleting(true);
+              await removeItem(it.productId, userId);
+              showSuccess('Đã xoá sản phẩm khỏi giỏ');
+              await reload();
+            } catch (e) {
+              showError(`Xoá thất bại: ${(e as Error).message}`);
+            } finally {
+              setDeleting(false);
+            }
           }}
           title="Xoá mục này"
         >
@@ -688,6 +707,7 @@ function FlightCard({
   userId: string;
   reload: () => Promise<void>;
 }) {
+  const [deleting, setDeleting] = useState(false);
   const baseSubtotalVND = it.unitPrice * it.quantity;
   const taxes = it.taxesVND ?? 0;
   const baggage = it.baggageVND ?? 0;
@@ -724,13 +744,21 @@ function FlightCard({
           )}
         </div>
         <button
-          className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50"
-          disabled={!userId}
+          className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-50"
+          disabled={!userId || deleting}
           onClick={async () => {
             if (!userId) return;
             if (!confirm('Xoá sản phẩm này khỏi giỏ?')) return;
-            await removeItem(userId, it.productId);
-            await reload();
+            try {
+              setDeleting(true);
+              await removeItem(it.productId, userId);
+              showSuccess('Đã xoá sản phẩm khỏi giỏ');
+              await reload();
+            } catch (e) {
+              showError(`Xoá thất bại: ${(e as Error).message}`);
+            } finally {
+              setDeleting(false);
+            }
           }}
           title="Xoá mục này"
         >
@@ -772,25 +800,42 @@ function QtyAndMoney({
   subtotalVND: number;
   reload: () => Promise<void>;
 }) {
+  const [updating, setUpdating] = useState(false);
   return (
     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
       <div className="inline-flex items-center rounded-lg border">
         <button
-          className="h-9 w-9 hover:bg-zinc-50"
+          className="h-9 w-9 hover:bg-zinc-50 disabled:opacity-50"
+          disabled={updating}
           onClick={async () => {
-            const q = Math.max(1, it.quantity - 1);
-            await updateQuantity(it.productId, q);
-            await reload();
+            try {
+              setUpdating(true);
+              const q = Math.max(1, it.quantity - 1);
+              await updateQuantity(it.productId, q);
+              await reload();
+            } catch (e) {
+              showError(`Cập nhật số lượng thất bại: ${(e as Error).message}`);
+            } finally {
+              setUpdating(false);
+            }
           }}
         >
           <Minus className="mx-auto h-4 w-4" />
         </button>
         <div className="h-9 min-w-[46px] border-x text-center leading-9">{it.quantity}</div>
         <button
-          className="h-9 w-9 hover:bg-zinc-50"
+          className="h-9 w-9 hover:bg-zinc-50 disabled:opacity-50"
+          disabled={updating}
           onClick={async () => {
-            await updateQuantity(it.productId, it.quantity + 1);
-            await reload();
+            try {
+              setUpdating(true);
+              await updateQuantity(it.productId, it.quantity + 1);
+              await reload();
+            } catch (e) {
+              showError(`Cập nhật số lượng thất bại: ${(e as Error).message}`);
+            } finally {
+              setUpdating(false);
+            }
           }}
         >
           <Plus className="mx-auto h-4 w-4" />

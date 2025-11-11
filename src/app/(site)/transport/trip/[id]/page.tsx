@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { showSuccess, showError } from '@/lib/toast';
 import {
   Plane,
   Luggage,
@@ -563,7 +564,7 @@ export default function TransportTripDetailPage() {
                       } catch {}
                     }
 
-                    alert('Đã thêm vào giỏ (Basket API)!');
+                    showSuccess('Đã thêm vào giỏ (Basket API)!');
                   } catch {
                     // Fallback local
                     addToCartLocal({
