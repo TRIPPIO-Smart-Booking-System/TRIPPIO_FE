@@ -18,6 +18,7 @@ import {
   MapPinHouse,
   ArrowRight,
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { Basket, clearBasket, getBasket, removeItem, updateQuantity } from '@/lib/cartapi';
 import { showSuccess, showError } from '@/lib/toast';
 import PaymentModal from '@/components/PaymentModal';
@@ -619,7 +620,17 @@ function HotelCard({
           disabled={!userId || deleting}
           onClick={async () => {
             if (!userId) return;
-            if (!confirm('Xoá sản phẩm này khỏi giỏ?')) return;
+            const result = await Swal.fire({
+              title: 'Xoá sản phẩm?',
+              text: 'Bạn chắc chắn muốn xoá sản phẩm này khỏi giỏ?',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#dc2626',
+              cancelButtonColor: '#6b7280',
+              confirmButtonText: 'Xoá',
+              cancelButtonText: 'Huỷ',
+            });
+            if (!result.isConfirmed) return;
             try {
               setDeleting(true);
               await removeItem(it.productId, userId);
@@ -676,7 +687,17 @@ function ShowCard({
           disabled={!userId || deleting}
           onClick={async () => {
             if (!userId) return;
-            if (!confirm('Xoá sản phẩm này khỏi giỏ?')) return;
+            const result = await Swal.fire({
+              title: 'Xoá sản phẩm?',
+              text: 'Bạn chắc chắn muốn xoá sản phẩm này khỏi giỏ?',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#dc2626',
+              cancelButtonColor: '#6b7280',
+              confirmButtonText: 'Xoá',
+              cancelButtonText: 'Huỷ',
+            });
+            if (!result.isConfirmed) return;
             try {
               setDeleting(true);
               await removeItem(it.productId, userId);
@@ -748,7 +769,17 @@ function FlightCard({
           disabled={!userId || deleting}
           onClick={async () => {
             if (!userId) return;
-            if (!confirm('Xoá sản phẩm này khỏi giỏ?')) return;
+            const result = await Swal.fire({
+              title: 'Xoá sản phẩm?',
+              text: 'Bạn chắc chắn muốn xoá sản phẩm này khỏi giỏ?',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#dc2626',
+              cancelButtonColor: '#6b7280',
+              confirmButtonText: 'Xoá',
+              cancelButtonText: 'Huỷ',
+            });
+            if (!result.isConfirmed) return;
             try {
               setDeleting(true);
               await removeItem(it.productId, userId);
