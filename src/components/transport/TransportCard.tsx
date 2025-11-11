@@ -29,32 +29,28 @@ const fmt = (iso?: string) => {
 /* --------- Art config (ảnh + gradient) --------- */
 const vehicleArt: Record<
   string,
-  { banner: string; icon: string; emoji: string; gradient: string; accent: string }
+  { banner: string; emoji: string; gradient: string; accent: string }
 > = {
   Airline: {
-    banner: '/img/transport/airline-hero.jpg',
-    icon: '/img/transport/airplane.png',
+    banner: '/images/transport/flight.webp',
     emoji: '✈️',
     gradient: 'from-sky-500 via-cyan-400 to-emerald-400',
     accent: 'text-sky-700',
   },
   Train: {
-    banner: '/img/transport/train-hero.jpg',
-    icon: '/img/transport/train.png',
+    banner: '/images/transport/train.webp',
     emoji: '🚆',
     gradient: 'from-emerald-500 via-teal-400 to-cyan-400',
     accent: 'text-emerald-700',
   },
   Bus: {
-    banner: '/img/transport/bus-hero.jpg',
-    icon: '/img/transport/bus.png',
+    banner: '/images/transport/bus.webp',
     emoji: '🚌',
     gradient: 'from-amber-400 via-orange-400 to-lime-400',
     accent: 'text-amber-700',
   },
   Other: {
-    banner: '/img/transport/other-hero.jpg',
-    icon: '/img/transport/vehicle.png',
+    banner: '/images/transport/transport-header.webp',
     emoji: '🚗',
     gradient: 'from-indigo-500 via-violet-400 to-fuchsia-400',
     accent: 'text-indigo-700',
@@ -128,18 +124,8 @@ export default function TransportCard({
 
         {/* left chips */}
         <div className="absolute left-4 top-4 flex items-center gap-2">
-          <span className="relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white/90 ring-1 ring-black/5">
-            <Image
-              src={art.icon}
-              alt="vehicle icon"
-              fill
-              className="object-contain p-1.5"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-                const parent = e.currentTarget.parentElement as HTMLSpanElement;
-                parent.textContent = getArt(transport.transportType).emoji;
-              }}
-            />
+          <span className="relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white/90 ring-1 ring-black/5 text-lg font-semibold">
+            {art.emoji}
           </span>
           <span className="rounded-xl bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800 shadow">
             {transport.transportType}
@@ -216,6 +202,7 @@ export default function TransportCard({
                     trip={tr}
                     passengers={passengers}
                     currency={currency}
+                    transportType={transport.transportType}
                     onBook={onBook}
                   />
                 ))}
@@ -239,11 +226,13 @@ function TripRow({
   trip,
   passengers,
   currency,
+  transportType,
   onBook,
 }: {
   trip: ApiTransportTrip;
   passengers: number;
   currency: Currency;
+  transportType?: string;
   onBook?: (trip: ApiTransportTrip, passengers: number) => void;
 }) {
   const total = useMemo(() => trip.price * passengers, [trip.price, passengers]);
@@ -264,64 +253,80 @@ function TripRow({
     <div
       className={`
         group grid items-center gap-3 rounded-2xl border border-slate-200/70
-        bg-white/80 p-3 ring-1 ring-black/0 backdrop-blur
+        bg-white/80 p-0 ring-1 ring-black/0 backdrop-blur overflow-hidden
         transition hover:-translate-y-0.5 hover:border-sky-300/70 hover:shadow-[0_18px_50px_-24px_rgba(2,132,199,.35)]
-        sm:grid-cols-[1.2fr_.9fr_.6fr_.6fr]
+        sm:grid-cols-[1fr_3fr]
       `}
     >
-      {/* route */}
-      <div className="min-w-0">
-        <div className="truncate text-[15px] font-semibold text-slate-900">
-          {trip.departure} <span className="mx-1.5 text-slate-400">→</span> {trip.destination}
-        </div>
-        <div className="mt-0.5 text-xs text-slate-500">
-          Mã chuyến: <span className="font-mono">{trip.id.slice(0, 6).toUpperCase()}</span>
-        </div>
+      {/* Image 1/4 */}
+      <div className="relative h-32 w-full sm:h-full sm:min-h-[140px]">
+        <Image
+          src={getTransportImageByType(transportType || 'Other')}
+          alt={`${trip.departure} to ${trip.destination}`}
+          fill
+          className="object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = '/images/transport/transport-header.webp';
+          }}
+        />
       </div>
 
-      {/* time */}
-      <div className="text-sm text-slate-700">
-        <div>
-          {fmt(trip.departureTime)} <span className="text-slate-400">→</span>{' '}
-          {fmt(trip.arrivalTime)}
+      {/* Content 3/4 */}
+      <div className="grid grid-cols-2 items-center gap-3 p-3 sm:grid-cols-4">
+        {/* route */}
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-semibold text-slate-900">
+            {trip.departure} <span className="mx-1.5 text-slate-400">→</span> {trip.destination}
+          </div>
+          <div className="mt-0.5 text-xs text-slate-500">
+            Mã chuyến: <span className="font-mono">{trip.id.slice(0, 6).toUpperCase()}</span>
+          </div>
         </div>
-        <div className="mt-0.5 text-xs text-slate-500">Khởi hành tối thiểu: {trip.departure}</div>
-      </div>
 
-      {/* seats */}
-      <div className="hidden sm:block">
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-            canBook
-              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70'
-              : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/70'
-          }`}
-        >
-          {canBook ? 'Còn' : 'Hết'} {trip.availableSeats ?? 0} ghế
-        </span>
-      </div>
-
-      {/* price + cta */}
-      <div className="text-right">
-        <div className="text-[11px] font-medium text-slate-500">Giá / vé</div>
-        <div className="text-lg font-extrabold tracking-tight text-orange-600">
-          {money(trip.price, currency)}
+        {/* time */}
+        <div className="text-sm text-slate-700">
+          <div>
+            {fmt(trip.departureTime)} <span className="text-slate-400">→</span>{' '}
+            {fmt(trip.arrivalTime)}
+          </div>
+          <div className="mt-0.5 text-xs text-slate-500">Khởi hành tối thiểu: {trip.departure}</div>
         </div>
-        <button
-          type="button"
-          disabled={!canBook}
-          onClick={handleBook}
-          className={`mt-2 h-10 w-full rounded-xl text-sm font-semibold shadow transition
-            ${
-              !canBook
-                ? 'cursor-not-allowed bg-slate-200 text-slate-500'
-                : 'bg-gradient-to-br from-sky-600 to-cyan-600 text-white hover:brightness-105 active:brightness-95'
+
+        {/* seats */}
+        <div className="hidden sm:block">
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              canBook
+                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70'
+                : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/70'
             }`}
-          aria-disabled={!canBook}
-          aria-label={`Đặt vé ${trip.departure} đến ${trip.destination}`}
-        >
-          {canBook ? 'Đặt vé' : 'Hết chỗ'}
-        </button>
+          >
+            {canBook ? 'Còn' : 'Hết'} {trip.availableSeats ?? 0} ghế
+          </span>
+        </div>
+
+        {/* price + cta */}
+        <div className="text-right">
+          <div className="text-[11px] font-medium text-slate-500">Giá / vé</div>
+          <div className="text-lg font-extrabold tracking-tight text-orange-600">
+            {money(trip.price, currency)}
+          </div>
+          <button
+            type="button"
+            disabled={!canBook}
+            onClick={handleBook}
+            className={`mt-2 h-10 w-full rounded-xl text-sm font-semibold shadow transition
+              ${
+                !canBook
+                  ? 'cursor-not-allowed bg-slate-200 text-slate-500'
+                  : 'bg-gradient-to-br from-sky-600 to-cyan-600 text-white hover:brightness-105 active:brightness-95'
+              }`}
+            aria-disabled={!canBook}
+            aria-label={`Đặt vé ${trip.departure} đến ${trip.destination}`}
+          >
+            {canBook ? 'Thêm vào giỏ hàng' : 'Hết chỗ'}
+          </button>
+        </div>
       </div>
     </div>
   );
