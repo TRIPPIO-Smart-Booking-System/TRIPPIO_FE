@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { postJSON } from '@/lib/http';
 import { extractUserIdFromJwt, setAuth } from '@/lib/auth';
+import { showSuccess, showError, showInfo } from '@/lib/toast';
 
 /* ----------------------------- Types ----------------------------- */
 type LoginPayload = { usernameOrPhone: string; password: string };
@@ -250,10 +251,12 @@ export default function LoginForm() {
         const emailVerified = user?.isEmailVerified === true || user?.emailConfirmed === true;
 
         if (!emailVerified) {
+          showInfo('Vui lòng xác minh email của bạn');
           router.push(`/verify-otp?email=${encodeURIComponent(emailForOtp || '')}`);
           return;
         }
 
+        showSuccess('Đăng nhập thành công!');
         // Lấy roles và lưu lại cho guard dùng
         const roles = extractRoles({ accessToken, user });
         try {
@@ -307,8 +310,11 @@ export default function LoginForm() {
 
       // Fallback
       setErr('Đăng nhập thất bại. Vui lòng thử lại.');
+      showError('Đăng nhập thất bại. Vui lòng kiểm tra lại email/mật khẩu');
     } catch (e: unknown) {
-      setErr(getErrorMessage(e) || 'Đăng nhập thất bại');
+      const errorMsg = getErrorMessage(e) || 'Đăng nhập thất bại';
+      setErr(errorMsg);
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }
