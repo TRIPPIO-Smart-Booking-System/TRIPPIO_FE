@@ -313,17 +313,6 @@ export default function ShowDetailPage() {
                 {soldOut ? 'Hết vé' : 'Thêm vào giỏ hàng'}
               </button>
 
-              <button
-                type="button"
-                className="mt-2 h-11 w-full rounded-xl border font-semibold hover:bg-zinc-50"
-                onClick={() =>
-                  alert(`Đặt ${qty} vé cho "${show.name}"\nTổng: ${money(total, currency)}`)
-                }
-                disabled={soldOut}
-              >
-                {soldOut ? 'Không thể đặt' : 'Đặt vé ngay'}
-              </button>
-
               <p className="mt-2 text-center text-xs text-zinc-500">
                 * Vé điện tử sẽ được gửi qua email/số điện thoại.
               </p>
