@@ -2,7 +2,10 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { ApiShow, formatDateTime, formatMoney } from '@/data/show.api';
+import { loadShows, getRandomItem, type ShowData } from '@/lib/csvLoader';
 
 type Props = {
   show: ApiShow;
@@ -15,14 +18,30 @@ type Props = {
 
 export default function ShowCard({ show, currency = 'VND', isOpen, onToggle }: Props) {
   const soldOut = show.availableTickets <= 0;
+  const [randomShowImage, setRandomShowImage] = useState<ShowData | null>(null);
+
+  useEffect(() => {
+    // Load random show image once when component mounts
+    (async () => {
+      const shows = await loadShows();
+      const randomShow = getRandomItem(shows);
+      setRandomShowImage(randomShow || null);
+    })();
+  }, []);
 
   return (
     <article className="group overflow-hidden rounded-2xl border bg-white shadow transition hover:shadow-lg">
-      {/* Header / Banner */}
-      <div
-        className="relative h-28 w-full bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-400"
-        role="presentation"
-      >
+      {/* Image Banner */}
+      <div className="relative h-40 w-full bg-gray-200">
+        <Image
+          src={randomShowImage?.image_url || '/img/placeholder.jpg'}
+          alt={show.name}
+          fill
+          sizes="(max-width: 768px) 100vw, 400px"
+          className="object-cover"
+          priority={false}
+          unoptimized
+        />
         <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-sky-700 shadow">
           {formatMoney(show.price, currency)}/vé
         </div>

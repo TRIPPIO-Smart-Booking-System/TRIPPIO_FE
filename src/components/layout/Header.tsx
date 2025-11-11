@@ -201,41 +201,16 @@ export default function Header() {
               href="/homepage"
               className="group inline-flex items-center gap-2 text-white hover:opacity-90 transition-opacity"
             >
-              <div className="relative h-10 w-auto">
-                <svg
-                  viewBox="0 0 200 60"
-                  className="h-10 w-auto fill-none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  {/* Trippio text */}
-                  <text
-                    x="10"
-                    y="45"
-                    fontSize="40"
-                    fontWeight="bold"
-                    fill="currentColor"
-                    fontFamily="Arial"
-                  >
-                    Trippio
-                  </text>
-                  {/* Globe icon */}
-                  <circle cx="170" cy="30" r="18" stroke="currentColor" strokeWidth="1.5" />
-                  <ellipse
-                    cx="170"
-                    cy="30"
-                    rx="16"
-                    ry="6"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    opacity="0.7"
-                  />
-                  <path
-                    d="M 154 30 Q 170 40 186 30"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    opacity="0.7"
-                  />
-                </svg>
+              <div className="relative h-12 w-auto">
+                <Image
+                  src="/logoTrippio.png"
+                  alt="Trippio Logo"
+                  height={48}
+                  width={200}
+                  className="h-12 w-auto object-contain"
+                  priority
+                  unoptimized
+                />
               </div>
             </Link>
 
@@ -276,7 +251,7 @@ export default function Header() {
               <NavLink href="/homepage">Trang chủ</NavLink>
               <NavLink href="/hotel">Khách sạn</NavLink>
               <NavLink href="/show">Vui chơi</NavLink>
-              <NavLink href="/transport">Chuyến bay</NavLink>
+              <NavLink href="/transport">Phương tiện</NavLink>
               <NavLink href="/contact">Liên hệ</NavLink>
               {isLoggedIn && (
                 <Link

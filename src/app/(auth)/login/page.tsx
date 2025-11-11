@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { postJSON } from '@/lib/http';
 import { extractUserIdFromJwt, setAuth } from '@/lib/auth';
@@ -330,40 +331,15 @@ export default function LoginForm() {
               {/* header */}
               <div className="mb-5 text-center">
                 <div className="mx-auto mb-3 inline-flex h-16 w-auto items-center justify-center">
-                  <svg
-                    viewBox="0 0 200 60"
-                    className="h-16 w-auto fill-none text-teal-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    {/* Trippio text */}
-                    <text
-                      x="10"
-                      y="45"
-                      fontSize="40"
-                      fontWeight="bold"
-                      fill="currentColor"
-                      fontFamily="Arial"
-                    >
-                      Trippio
-                    </text>
-                    {/* Globe icon */}
-                    <circle cx="170" cy="30" r="18" stroke="currentColor" strokeWidth="1.5" />
-                    <ellipse
-                      cx="170"
-                      cy="30"
-                      rx="16"
-                      ry="6"
-                      stroke="currentColor"
-                      strokeWidth="1"
-                      opacity="0.7"
-                    />
-                    <path
-                      d="M 154 30 Q 170 40 186 30"
-                      stroke="currentColor"
-                      strokeWidth="1"
-                      opacity="0.7"
-                    />
-                  </svg>
+                  <Image
+                    src="/logoTrippio.png"
+                    alt="Trippio Logo"
+                    height={64}
+                    width={240}
+                    className="h-16 w-auto object-contain"
+                    priority
+                    unoptimized
+                  />
                 </div>
                 <h2 className="text-2xl font-extrabold tracking-tight text-neutral-900 drop-shadow-sm dark:text-white">
                   Đăng nhập Trippio

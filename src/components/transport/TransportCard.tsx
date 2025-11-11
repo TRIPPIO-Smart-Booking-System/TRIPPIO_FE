@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { ApiTransport, ApiTransportTrip } from '@/app/(site)/transport/page';
+import { loadFlights, getRandomItem, type FlightData } from '@/lib/csvLoader';
 
 type Currency = 'VND' | 'USD';
 
@@ -86,6 +87,16 @@ export default function TransportCard({
   const hasTrips = trips.length > 0;
   const [open, setOpen] = useState<boolean>(defaultOpen && hasTrips);
   const art = getArt(transport.transportType);
+  const [randomFlightImage, setRandomFlightImage] = useState<FlightData | null>(null);
+
+  useEffect(() => {
+    // Load random flight image once when component mounts
+    (async () => {
+      const flights = await loadFlights();
+      const randomFlight = getRandomItem(flights);
+      setRandomFlightImage(randomFlight || null);
+    })();
+  }, []);
 
   return (
     <article
@@ -107,12 +118,13 @@ export default function TransportCard({
       <div className="relative h-32 w-full sm:h-36">
         <div className={`absolute inset-0 bg-gradient-to-r ${art.gradient}`} />
         <Image
-          src={art.banner}
+          src={randomFlightImage?.image_url || art.banner}
           alt={`${transport.transportType} banner`}
           fill
           className="object-cover mix-blend-multiply opacity-90"
           onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
           priority
+          unoptimized
         />
         {/* Shine overlay */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(600px_120px_at_20%_-10%,rgba(255,255,255,.35),transparent)]" />

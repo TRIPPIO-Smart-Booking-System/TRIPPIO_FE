@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiHotel } from '@/data/hotel.types';
 import { BedDouble, Users2, DoorOpen, Star } from 'lucide-react';
+import { loadHotels, getRandomItem, type HotelData } from '@/lib/csvLoader';
 
 /** Prefer HTTPS in prod to avoid mixed content */
 const API_BASE =
@@ -62,6 +63,16 @@ export default function HotelCard({
   const [rooms, setRooms] = useState<ApiRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [roomErr, setRoomErr] = useState<string | null>(null);
+  const [randomHotelImage, setRandomHotelImage] = useState<HotelData | null>(null);
+
+  useEffect(() => {
+    // Load random hotel image once when component mounts
+    (async () => {
+      const hotels = await loadHotels();
+      const randomHotel = getRandomItem(hotels);
+      setRandomHotelImage(randomHotel || null);
+    })();
+  }, []);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -126,12 +137,13 @@ export default function HotelCard({
       {/* LEFT: image */}
       <div className="relative w-[30%] min-h-[220px]">
         <Image
-          src="/img/placeholder.jpg"
+          src={randomHotelImage?.image_url || '/img/placeholder.jpg'}
           alt={hotel.name}
           fill
           sizes="(max-width: 768px) 100vw, 30vw"
           className="object-cover"
           priority={false}
+          unoptimized
         />
       </div>
 
