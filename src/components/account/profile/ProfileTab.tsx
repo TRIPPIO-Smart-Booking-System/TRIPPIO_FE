@@ -139,8 +139,12 @@ export default function ProfileTab({
       setAvatar(updated.avatar ?? '');
       setAvatarPreview('');
       setAvatarVer((v) => v + 1);
-      setOkMsg('Đã cập nhật avatar.');
-      setTimeout(() => setOkMsg(null), 1200);
+      setOkMsg('Đã cập nhật avatar. Trang sẽ tải lại trong 2 giây...');
+
+      // Reload page after 2 seconds to show new avatar in header and everywhere
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (err) {
       setSaveErr(errToMsg(err));
     } finally {
@@ -212,11 +216,17 @@ export default function ProfileTab({
                 height={64}
                 className="h-16 w-16 rounded-full object-cover"
                 unoptimized
-                onError={() => setSaveErr('Ảnh không hợp lệ hoặc không truy cập được')}
+                onError={() => {
+                  // Don't immediately show error on first load fail
+                  // Give it a chance to retry with the busted cache
+                  console.warn('Avatar failed to load:', bustedSrc);
+                }}
               />
             </button>
           ) : (
-            <div className="h-16 w-16 rounded-full bg-slate-200" />
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold">
+              {user?.firstName?.charAt(0).toUpperCase() || 'U'}
+            </div>
           )}
           <div className="text-xs text-slate-500">Bấm vào ảnh để xem kích thước lớn.</div>
         </div>

@@ -197,16 +197,64 @@ export default function Header() {
         <div className="container relative z-10 mx-auto max-w-screen-2xl px-4 py-1.5">
           <div className="flex h-12 items-center justify-between">
             {/* logo */}
-            <Link href="/homepage" className="group inline-flex items-center gap-2 text-white">
-              <div className="relative">
-                <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20 backdrop-blur">
-                  <svg width="16" height="16" viewBox="0 0 24 24" className="text-white">
-                    <path d="M12 2l7 19H5L12 2z" fill="currentColor" />
-                  </svg>
-                </div>
-                <span className="absolute -inset-1 -z-10 rounded-lg bg-white/10 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100" />
+            <Link
+              href="/homepage"
+              className="group inline-flex items-center gap-2 text-white hover:opacity-90 transition-opacity"
+            >
+              <div className="relative h-8 w-auto">
+                <svg
+                  width="120"
+                  height="32"
+                  viewBox="0 0 200 120"
+                  className="h-8 w-auto fill-none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* Left curved swash */}
+                  <path
+                    d="M 5 30 Q 30 10 50 40"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Globe */}
+                  <circle cx="70" cy="60" r="35" stroke="currentColor" strokeWidth="3" />
+                  <circle
+                    cx="70"
+                    cy="60"
+                    r="32"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    opacity="0.5"
+                  />
+                  <ellipse
+                    cx="70"
+                    cy="60"
+                    rx="32"
+                    ry="10"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    opacity="0.5"
+                  />
+                  <path
+                    d="M 38 60 Q 70 75 102 60"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    opacity="0.5"
+                  />
+
+                  {/* Small plane on globe */}
+                  <circle cx="85" cy="45" r="3" fill="currentColor" />
+
+                  {/* Right curved swash */}
+                  <path
+                    d="M 195 90 Q 170 110 150 80"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </div>
-              <span className="text-base font-extrabold tracking-tight">Trippio</span>
             </Link>
 
             {/* hamburger */}
@@ -266,23 +314,23 @@ export default function Header() {
               >
                 {/* === Avatar khi login, fallback icon khi chưa có === */}
                 {isLoggedIn && avatarSrc ? (
-                  <div className="relative h-7 w-7 flex-shrink-0">
+                  <div className="relative h-7 w-7 flex-shrink-0 group">
                     <Image
                       src={avatarSrc}
                       alt={me?.fullName || 'Avatar'}
                       width={28}
                       height={28}
-                      className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30"
+                      className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30 group-[.img-error]:hidden"
                       unoptimized
                       onError={(e) => {
-                        // Fallback to default avatar on load error
-                        (e.target as HTMLImageElement).style.display = 'none';
+                        // Show fallback on load error
+                        const container = (e.target as HTMLImageElement).parentElement;
+                        if (container) {
+                          container.classList.add('img-error');
+                        }
                       }}
                     />
-                    <div
-                      className="absolute inset-0 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/30"
-                      style={{ display: avatarSrc ? 'none' : 'flex' }}
-                    >
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 items-center justify-center text-white text-xs font-bold ring-1 ring-white/30 hidden group-[.img-error]:flex">
                       {me?.firstName?.charAt(0).toUpperCase() || 'U'}
                     </div>
                   </div>

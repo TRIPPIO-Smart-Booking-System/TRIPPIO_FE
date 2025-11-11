@@ -329,8 +329,59 @@ export default function LoginForm() {
             <div className="rounded-3xl border border-white/20 bg-white/75 p-6 dark:border-white/10 dark:bg-neutral-900/60">
               {/* header */}
               <div className="mb-5 text-center">
-                <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-pink-500 to-sky-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-white/40">
-                  <Palm />
+                <div className="mx-auto mb-3 inline-flex h-16 w-auto items-center justify-center">
+                  <svg
+                    width="160"
+                    height="96"
+                    viewBox="0 0 200 120"
+                    className="h-16 w-auto fill-none text-teal-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    {/* Left curved swash */}
+                    <path
+                      d="M 5 30 Q 30 10 50 40"
+                      stroke="currentColor"
+                      strokeWidth="12"
+                      strokeLinecap="round"
+                    />
+
+                    {/* Globe */}
+                    <circle cx="70" cy="60" r="35" stroke="currentColor" strokeWidth="3" />
+                    <circle
+                      cx="70"
+                      cy="60"
+                      r="32"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    <ellipse
+                      cx="70"
+                      cy="60"
+                      rx="32"
+                      ry="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    <path
+                      d="M 38 60 Q 70 75 102 60"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+
+                    {/* Small plane on globe */}
+                    <circle cx="85" cy="45" r="3" fill="currentColor" />
+
+                    {/* Right curved swash */}
+                    <path
+                      d="M 195 90 Q 170 110 150 80"
+                      stroke="currentColor"
+                      strokeWidth="12"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </div>
                 <h2 className="text-2xl font-extrabold tracking-tight text-neutral-900 drop-shadow-sm dark:text-white">
                   Đăng nhập Trippio
