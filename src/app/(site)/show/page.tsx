@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import ShowCard from '@/components/show/ShowCard';
-import { API_BASE, ApiShow } from '@/data/show.api';
 import { loadShows, getRandomItem, type ShowData } from '@/lib/csvLoader';
+import { getCachedShows, preloadAllData, type ApiShow } from '@/lib/dataCache';
 
 type Filters = {
   city: string;
@@ -43,10 +43,17 @@ export default function ShowListPage() {
       try {
         setLoading(true);
         setErr(null);
-        const res = await fetch(`${API_BASE}/api/Show`, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: unknown = await res.json();
-        setShows(Array.isArray(data) ? (data as ApiShow[]) : []);
+
+        // Try to get cached data first
+        let cachedShows = getCachedShows();
+
+        // If not cached, preload and fetch
+        if (!cachedShows) {
+          await preloadAllData();
+          cachedShows = getCachedShows();
+        }
+
+        setShows(cachedShows || []);
       } catch (e: unknown) {
         setErr(e instanceof Error ? e.message : 'Fetch failed');
       } finally {

@@ -6,31 +6,14 @@ import { useRouter } from 'next/navigation';
 import TransportSearchBar, { TransportSearch } from '@/components/transport/TransportSearchBar';
 import TransportCard from '@/components/transport/TransportCard';
 import { loadFlights, getRandomItem, type FlightData } from '@/lib/csvLoader';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
-
-export type ApiTransportTrip = {
-  id: string;
-  transportId: string;
-  departure: string;
-  destination: string;
-  departureTime: string;
-  arrivalTime: string;
-  price: number;
-  availableSeats: number;
-  dateCreated: string;
-  modifiedDate: string | null;
-  transport: string | null;
-};
-
-export type ApiTransport = {
-  id: string;
-  transportType: string;
-  name: string;
-  dateCreated: string;
-  modifiedDate: string | null;
-  transportTrips?: ApiTransportTrip[];
-};
+import {
+  getCachedTransports,
+  getCachedTrips,
+  getCacheStatus,
+  preloadAllData,
+  type ApiTransport,
+  type ApiTransportTrip,
+} from '@/lib/dataCache';
 
 export default function TransportPage() {
   const router = useRouter();
@@ -69,18 +52,19 @@ export default function TransportPage() {
         setLoading(true);
         setErr(null);
 
-        const [resT, resTrips] = await Promise.all([
-          fetch(`${API_BASE}/api/Transport`, { cache: 'no-store' }),
-          fetch(`${API_BASE}/api/TransportTrip`, { cache: 'no-store' }),
-        ]);
-        if (!resT.ok) throw new Error(`Transport HTTP ${resT.status}`);
-        if (!resTrips.ok) throw new Error(`TransportTrip HTTP ${resTrips.status}`);
+        // Try to get cached data first
+        let cachedTransports = getCachedTransports();
+        let cachedTrips = getCachedTrips();
 
-        const tJson: unknown = await resT.json();
-        const tripsJson: unknown = await resTrips.json();
+        // If not cached, preload and fetch
+        if (!cachedTransports || !cachedTrips) {
+          await preloadAllData();
+          cachedTransports = getCachedTransports();
+          cachedTrips = getCachedTrips();
+        }
 
-        setTransports(Array.isArray(tJson) ? (tJson as ApiTransport[]) : []);
-        setTrips(Array.isArray(tripsJson) ? (tripsJson as ApiTransportTrip[]) : []);
+        setTransports(cachedTransports || []);
+        setTrips(cachedTrips || []);
       } catch (e: unknown) {
         setErr(e instanceof Error ? e.message : 'Fetch failed');
       } finally {

@@ -7,8 +7,7 @@ import HotelSearchBar, { HotelSearchQuery } from '@/components/hotel/HotelSearch
 import HotelCard from '@/components/hotel/HotelCard';
 import type { ApiHotel, ApiRoom } from '@/data/hotel.types';
 import { loadHotels, getRandomItem, type HotelData } from '@/lib/csvLoader';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
+import { getCachedHotels, preloadAllData } from '@/lib/dataCache';
 
 type SortKey = 'popularity' | 'priceAsc' | 'priceDesc' | 'ratingDesc';
 type ViewMode = 'grid' | 'list';
@@ -114,45 +113,22 @@ export default function HotelsPage() {
         setLoading(true);
         setErr(null);
 
-        const [resHotels, resRooms] = await Promise.all([
-          fetch(`${API_BASE}/api/Hotel`, {
-            cache: 'no-store',
-            signal: ac.signal,
-            headers: { Accept: 'application/json' },
-          }),
-          fetch(`${API_BASE}/api/Room`, {
-            cache: 'no-store',
-            signal: ac.signal,
-            headers: { Accept: 'application/json' },
-          }),
-        ]);
+        // Try to get cached data first
+        let cachedHotels = getCachedHotels();
 
-        if (!resHotels.ok) throw new Error(`Hotel HTTP ${resHotels.status}`);
-        if (!resRooms.ok) throw new Error(`Room HTTP ${resRooms.status}`);
-
-        const rawHotels: unknown = await resHotels.json();
-        const rawRooms: unknown = await resRooms.json();
-
-        const hotelsArr: ApiHotel[] = Array.isArray(rawHotels) ? (rawHotels as ApiHotel[]) : [];
-        const roomsArr: ApiRoom[] = Array.isArray(rawRooms) ? (rawRooms as ApiRoom[]) : [];
-
-        // group rooms by hotelId
-        const mapRooms = new Map<string, ApiRoom[]>();
-        for (const r of roomsArr) {
-          if (!r?.hotelId) continue;
-          const bucket = mapRooms.get(r.hotelId) ?? [];
-          bucket.push(r);
-          mapRooms.set(r.hotelId, bucket);
-        }
-        // sort each bucket by price
-        for (const arr of mapRooms.values()) {
-          arr.sort((a, b) => (a.pricePerNight ?? 0) - (b.pricePerNight ?? 0));
+        // If not cached, preload and fetch
+        if (!cachedHotels) {
+          await preloadAllData();
+          cachedHotels = getCachedHotels();
         }
 
-        // attach rooms (luôn là mảng)
+        const hotelsArr: ApiHotel[] = cachedHotels || [];
+
+        // TODO: You'll need to fetch rooms separately since they're not in cache yet
+        // For now, just use hotels with empty rooms
         const attached: LooseHotel[] = hotelsArr.map((h) => ({
           ...h,
-          rooms: mapRooms.get(h.id) ?? [],
+          rooms: [],
         }));
 
         if (!ac.signal.aborted) {

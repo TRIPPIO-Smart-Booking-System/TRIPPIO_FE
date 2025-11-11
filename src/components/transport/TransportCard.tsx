@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useMemo, useState, useEffect } from 'react';
-import type { ApiTransport, ApiTransportTrip } from '@/app/(site)/transport/page';
+import type { ApiTransport, ApiTransportTrip } from '@/lib/dataCache';
 import { loadFlights, getRandomItem, type FlightData } from '@/lib/csvLoader';
 
 type Currency = 'VND' | 'USD';
@@ -83,7 +83,7 @@ export default function TransportCard({
   defaultOpen?: boolean;
   onBook?: (trip: ApiTransportTrip, passengers: number) => void;
 }) {
-  const trips = transport.transportTrips ?? [];
+  const trips: ApiTransportTrip[] = transport.transportTrips ?? [];
   const hasTrips = trips.length > 0;
   const [open, setOpen] = useState<boolean>(defaultOpen && hasTrips);
   const art = getArt(transport.transportType);
