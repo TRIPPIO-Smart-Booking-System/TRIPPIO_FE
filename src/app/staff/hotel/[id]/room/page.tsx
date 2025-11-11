@@ -1,0 +1,221 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { getAuth } from '@/lib/auth';
+import { Plus, ArrowLeft, Trash2, Loader } from 'lucide-react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
+
+type ApiHotel = {
+  id: string;
+  name: string;
+  city: string;
+};
+
+type ApiRoom = {
+  id: string;
+  hotelId: string;
+  roomType: string;
+  capacity: number;
+  pricePerNight: number;
+  availableRooms: number;
+  dateCreated: string;
+};
+
+function authHeaders(): HeadersInit {
+  const { accessToken } = getAuth();
+  return {
+    'Content-Type': 'application/json',
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
+}
+
+function fmtVND(n: number) {
+  return n.toLocaleString('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  });
+}
+
+function fmtDate(d: string) {
+  const n = new Date(d);
+  return Number.isNaN(n.getTime()) ? d : n.toLocaleString('vi-VN');
+}
+
+export default function HotelRoomsPage() {
+  const params = useParams();
+  const hotelId = params.id as string;
+
+  const [hotel, setHotel] = useState<ApiHotel | null>(null);
+  const [rooms, setRooms] = useState<ApiRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+
+  async function loadHotel() {
+    try {
+      const res = await fetch(`${API_BASE}/api/Hotel/${hotelId}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as ApiHotel;
+      setHotel(data);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Tải hotel thất bại');
+    }
+  }
+
+  async function loadRooms() {
+    if (!hotelId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/Room/hotel/${hotelId}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as ApiRoom[];
+      setRooms(data);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Tải danh sách room thất bại');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadHotel();
+    loadRooms();
+  }, [hotelId]);
+
+  async function onDelete(id: string) {
+    if (!confirm('Bạn chắc chắn muốn xóa?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/Room/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setRooms((prev) => prev.filter((r) => r.id !== id));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Xóa thất bại');
+    }
+  }
+
+  const filtered = rooms.filter((r) => r.roomType.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Link
+            href="/staff/hotel"
+            className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-800 font-medium transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" /> Quay lại danh sách hotel
+          </Link>
+        </div>
+
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold text-emerald-900 mb-2">Quản lý Phòng</h1>
+              {hotel && (
+                <p className="text-emerald-700">
+                  <span className="font-semibold text-emerald-900">{hotel.name}</span> •{' '}
+                  {hotel.city}
+                </p>
+              )}
+            </div>
+            {hotelId && (
+              <Link
+                href={`/staff/hotel/${hotelId}/room/new`}
+                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-lg font-semibold shadow-lg transition-colors whitespace-nowrap"
+              >
+                <Plus className="h-5 w-5" /> Tạo Room
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="🔍 Tìm kiếm theo loại phòng..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="w-full px-4 py-3 rounded-lg border border-emerald-200 bg-white/60 text-emerald-900 placeholder-emerald-600/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+          />
+        </div>
+
+        {/* Error */}
+        {err && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+            {err}
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading ? (
+          <div className="flex items-center justify-center gap-3 py-16">
+            <Loader className="h-6 w-6 animate-spin text-emerald-600" />
+            <span className="text-emerald-700">Đang tải...</span>
+          </div>
+        ) : filtered.length ? (
+          <div className="grid gap-4">
+            {filtered.map((room) => (
+              <div
+                key={room.id}
+                className="bg-white rounded-xl border border-emerald-200 p-6 hover:shadow-lg hover:border-emerald-300 transition-all group"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-emerald-900 mb-3 group-hover:text-emerald-700 transition-colors">
+                      {room.roomType}
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Sức chứa</p>
+                        <p className="font-bold text-emerald-900 text-lg">{room.capacity} người</p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Phòng còn</p>
+                        <p className="font-bold text-emerald-900 text-lg">{room.availableRooms}</p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Giá/đêm</p>
+                        <p className="font-bold text-emerald-700 text-lg">
+                          {fmtVND(room.pricePerNight)}
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-emerald-700 text-sm font-medium">Tạo lúc</p>
+                        <p className="font-semibold text-emerald-800 text-sm">
+                          {fmtDate(room.dateCreated).split(' ')[0]}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onDelete(room.id)}
+                    className="px-4 py-2 bg-red-100 hover:bg-red-200 border border-red-300 text-red-700 rounded-lg font-semibold inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                  >
+                    <Trash2 className="h-4 w-4" /> Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-emerald-700 text-lg">Không có room nào</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

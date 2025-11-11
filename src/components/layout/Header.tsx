@@ -244,11 +244,18 @@ export default function Header() {
           <div className="flex h-12 items-center justify-between">
             <nav className="hidden items-center gap-3 md:flex">
               <NavLink href="/homepage">Trang chủ</NavLink>
-              <NavLink href="/tours">Tours</NavLink>
               <NavLink href="/hotel">Khách sạn</NavLink>
               <NavLink href="/show">Vui chơi</NavLink>
               <NavLink href="/transport">Chuyến bay</NavLink>
               <NavLink href="/contact">Liên hệ</NavLink>
+              {isLoggedIn && (
+                <Link
+                  href="/travel-assistant"
+                  className="inline-flex items-center gap-2 ml-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-[14px] font-semibold shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                >
+                  🤖 AI Tư Vấn
+                </Link>
+              )}
             </nav>
 
             {/* profile dropdown */}
@@ -289,13 +296,13 @@ export default function Header() {
                         Hồ sơ của tôi
                       </Link>
                       <Link
-                        href="/chat"
-                        className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                        href="/travel-assistant"
+                        className="block px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 font-semibold border-t border-b border-gray-200"
                         onClick={() => setDropdownOpen(false)}
                       >
-                        <User className="mr-2 inline-block h-5 w-5" />
-                        ChatBox
+                        🤖 AI Tư Vấn Du Lịch
                       </Link>
+
                       <Link
                         href="/cart"
                         className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
