@@ -2,9 +2,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import HotelSearchBar, { HotelSearchQuery } from '@/components/hotel/HotelSearchBar';
 import HotelCard from '@/components/hotel/HotelCard';
 import type { ApiHotel, ApiRoom } from '@/data/hotel.types';
+import { loadHotels, getRandomItem, type HotelData } from '@/lib/csvLoader';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
 
@@ -91,6 +93,18 @@ export default function HotelsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>('popularity');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [headerImage, setHeaderImage] = useState<HotelData | null>(null);
+
+  // Load random hotel image for header
+  useEffect(() => {
+    (async () => {
+      const hotelImages = await loadHotels();
+      if (hotelImages.length > 0) {
+        const randomHotel = getRandomItem(hotelImages);
+        setHeaderImage(randomHotel || null);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -205,7 +219,26 @@ export default function HotelsPage() {
   const total = filtered.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-white">
+    <div className="min-h-screen">
+      {/* Hero Banner with Random Hotel Image */}
+      {headerImage && (
+        <div className="relative h-48 w-full overflow-hidden md:h-64 lg:h-80">
+          <Image
+            src={headerImage.image_url}
+            alt={headerImage.name}
+            fill
+            className="object-cover"
+            unoptimized
+            priority
+          />
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">🏨 {headerImage.name}</h1>
+            <p className="mt-2 text-sm md:text-base">{headerImage.city}</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">

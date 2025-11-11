@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import ShowCard from '@/components/show/ShowCard';
 import { API_BASE, ApiShow } from '@/data/show.api';
+import { loadShows, getRandomItem, type ShowData } from '@/lib/csvLoader';
 
 type Filters = {
   city: string;
@@ -14,6 +16,7 @@ export default function ShowListPage() {
   const [shows, setShows] = useState<ApiShow[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
+  const [headerImage, setHeaderImage] = useState<ShowData | null>(null);
 
   const [filters, setFilters] = useState<Filters>({
     city: '',
@@ -23,6 +26,17 @@ export default function ShowListPage() {
 
   // chỉ mở 1 card
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // Load random show image for header
+  useEffect(() => {
+    (async () => {
+      const showImages = await loadShows();
+      if (showImages.length > 0) {
+        const randomShow = getRandomItem(showImages);
+        setHeaderImage(randomShow || null);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -106,6 +120,25 @@ export default function ShowListPage() {
 
   return (
     <div className="relative">
+      {/* Hero Banner with Random Show Image */}
+      {headerImage && (
+        <div className="relative h-48 w-full overflow-hidden md:h-64 lg:h-80">
+          <Image
+            src={headerImage.image_url}
+            alt={headerImage.name}
+            fill
+            className="object-cover"
+            unoptimized
+            priority
+          />
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">🎭 {headerImage.name}</h1>
+            <p className="mt-2 text-sm md:text-base">{headerImage.category}</p>
+          </div>
+        </div>
+      )}
+
       {/* ====== BACKGROUND ====== */}
       <div
         aria-hidden

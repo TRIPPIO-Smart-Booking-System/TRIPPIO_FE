@@ -201,57 +201,39 @@ export default function Header() {
               href="/homepage"
               className="group inline-flex items-center gap-2 text-white hover:opacity-90 transition-opacity"
             >
-              <div className="relative h-8 w-auto">
+              <div className="relative h-10 w-auto">
                 <svg
-                  width="120"
-                  height="32"
-                  viewBox="0 0 200 120"
-                  className="h-8 w-auto fill-none"
+                  viewBox="0 0 200 60"
+                  className="h-10 w-auto fill-none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  {/* Left curved swash */}
-                  <path
-                    d="M 5 30 Q 30 10 50 40"
-                    stroke="currentColor"
-                    strokeWidth="12"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Globe */}
-                  <circle cx="70" cy="60" r="35" stroke="currentColor" strokeWidth="3" />
-                  <circle
-                    cx="70"
-                    cy="60"
-                    r="32"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    opacity="0.5"
-                  />
+                  {/* Trippio text */}
+                  <text
+                    x="10"
+                    y="45"
+                    fontSize="40"
+                    fontWeight="bold"
+                    fill="currentColor"
+                    fontFamily="Arial"
+                  >
+                    Trippio
+                  </text>
+                  {/* Globe icon */}
+                  <circle cx="170" cy="30" r="18" stroke="currentColor" strokeWidth="1.5" />
                   <ellipse
-                    cx="70"
-                    cy="60"
-                    rx="32"
-                    ry="10"
+                    cx="170"
+                    cy="30"
+                    rx="16"
+                    ry="6"
                     stroke="currentColor"
-                    strokeWidth="2"
-                    opacity="0.5"
+                    strokeWidth="1"
+                    opacity="0.7"
                   />
                   <path
-                    d="M 38 60 Q 70 75 102 60"
+                    d="M 154 30 Q 170 40 186 30"
                     stroke="currentColor"
-                    strokeWidth="2"
-                    opacity="0.5"
-                  />
-
-                  {/* Small plane on globe */}
-                  <circle cx="85" cy="45" r="3" fill="currentColor" />
-
-                  {/* Right curved swash */}
-                  <path
-                    d="M 195 90 Q 170 110 150 80"
-                    stroke="currentColor"
-                    strokeWidth="12"
-                    strokeLinecap="round"
+                    strokeWidth="1"
+                    opacity="0.7"
                   />
                 </svg>
               </div>

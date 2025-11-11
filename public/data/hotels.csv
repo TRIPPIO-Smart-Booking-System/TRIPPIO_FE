@@ -1,0 +1,31 @@
+id,name,image_url,category,city
+1,Luxury Beachfront Resort,https://images.unsplash.com/photo-1631049307038-da5ec5d128c2?w=800&q=80,5-star,Nha Trang
+2,Modern City Hotel,https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80,4-star,Ho Chi Minh
+3,Boutique Mountain Retreat,https://images.unsplash.com/photo-1571896349842-c5886de7e04e?w=800&q=80,4-star,Da Lat
+4,Colonial Heritage Hotel,https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&q=80,3-star,Hanoi
+5,Waterfront Convention Center,https://images.unsplash.com/photo-1582719471537-41b85eaf3212?w=800&q=80,5-star,Da Nang
+6,Garden Boutique Suites,https://images.unsplash.com/photo-1564501049351-b8f5dc325757?w=800&q=80,4-star,Hoi An
+7,Ocean Cliff Residence,https://images.unsplash.com/photo-1551524164-0fcae1b18a2e?w=800&q=80,5-star,Phu Quoc
+8,Urban Luxury Apartments,https://images.unsplash.com/photo-1585399554181-5c5f999e6f0a?w=800&q=80,4-star,HCMC
+9,Riverside Wellness Resort,https://images.unsplash.com/photo-1609601556166-be9dcbb57d36?w=800&q=80,4-star,Can Tho
+10,Historic Old Town Hotel,https://images.unsplash.com/photo-1567521464027-f127ff144326?w=800&q=80,3-star,Hoi An
+11,Tropical Garden Villas,https://images.unsplash.com/photo-1527004760902-c81345ad2215?w=800&q=80,5-star,Siem Reap Border
+12,Contemporary Design Hotel,https://images.unsplash.com/photo-1618886996212-539a9e7c0ea4?w=800&q=80,4-star,Da Nang
+13,Serene Lake Palace,https://images.unsplash.com/photo-1571293382911-a36f6e1d01ca?w=800&q=80,5-star,Da Lat
+14,Business Executive Suites,https://images.unsplash.com/photo-1585372621022-59cbe3e97859?w=800&q=80,4-star,Hanoi
+15,Eco-Retreat Sanctuary,https://images.unsplash.com/photo-1571293382911-a36f6e1d01ca?w=800&q=80,3-star,Mekong
+16,Premium City Center,https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=800&q=80,5-star,HCMC
+17,Seaside Resort Paradiso,https://images.unsplash.com/photo-1577720643272-265f434a9cf5?w=800&q=80,4-star,Nha Trang
+18,Mountain Escape Lodge,https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80,3-star,Sapa
+19,Cultural Fusion Hotel,https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80,4-star,Hanoi
+20,Beachside Paradise Resort,https://images.unsplash.com/photo-1561049933-3ffd6ff8c5fe?w=800&q=80,5-star,Phu Quoc
+21,Downtown Comfort Inn,https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80,3-star,HCMC
+22,Grand Lake Hotel,https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80,5-star,Ba Be
+23,Riverfront Boutique,https://images.unsplash.com/photo-1610818313767-bc8eb8c8337e?w=800&q=80,4-star,Hue
+24,Wellness Spa Resort,https://images.unsplash.com/photo-1522158537185-1d4ccd1e3e5f?w=800&q=80,4-star,Da Lat
+25,Beach Club Premium,https://images.unsplash.com/photo-1569159258065-bb44ddb2b2d9?w=800&q=80,5-star,Nha Trang
+26,City Tower Luxury,https://images.unsplash.com/photo-1597911266052-49a9c2c30ebd?w=800&q=80,5-star,Hanoi
+27,Tropical Garden Suites,https://images.unsplash.com/photo-1542435503-a142f3fba46e?w=800&q=80,4-star,Phu Quoc
+28,Historic Charm Hotel,https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&q=80,3-star,Hanoi
+29,Modern Resort Complex,https://images.unsplash.com/photo-1631049307038-da5ec5d128c2?w=800&q=80,4-star,Nha Trang
+30,Elite Guest House,https://images.unsplash.com/photo-1587612810051-75b68c87f747?w=800&q=80,3-star,Hoi An
