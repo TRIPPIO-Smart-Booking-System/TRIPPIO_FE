@@ -9,6 +9,7 @@ import PhoneList, { Phone } from './PhoneList';
 import LinkedProviders, { Linked } from './LinkedProviders';
 import SectionCard from '../SectionCard';
 import { UserResponse, apiUploadAvatar, apiUpdateAvatarUrl } from '@/lib/api';
+import { showSuccess, showError } from '@/lib/toast';
 
 function toDobParts(iso?: string | null): DOB {
   if (!iso) return { d: '', m: '', y: '' };
@@ -88,10 +89,13 @@ export default function ProfileTab({
       const updated = await apiUploadAvatar(file);
       onUserChange(updated);
       setAvatar(updated.avatar ?? '');
+      showSuccess('Đã cập nhật avatar thành công');
       setOkMsg('Đã cập nhật avatar.');
       setTimeout(() => setOkMsg(null), 1200);
     } catch (err: unknown) {
-      setSaveErr(errToMsg(err));
+      const msg = errToMsg(err);
+      setSaveErr(msg);
+      showError(`Lỗi cập nhật avatar: ${msg}`);
     } finally {
       setAvatarBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -107,10 +111,13 @@ export default function ProfileTab({
       const updated = await apiUpdateAvatarUrl(avatar.trim());
       onUserChange(updated);
       setAvatar(updated.avatar ?? avatar.trim());
+      showSuccess('Đã cập nhật avatar từ URL thành công');
       setOkMsg('Đã cập nhật avatar (URL).');
       setTimeout(() => setOkMsg(null), 1200);
     } catch (err: unknown) {
-      setSaveErr(errToMsg(err));
+      const msg = errToMsg(err);
+      setSaveErr(msg);
+      showError(`Lỗi cập nhật avatar: ${msg}`);
     } finally {
       setAvatarBusy(false);
     }
