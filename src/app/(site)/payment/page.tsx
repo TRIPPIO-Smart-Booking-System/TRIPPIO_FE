@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fmtVND } from '@/lib/payment';
+import { showSuccess, showError } from '@/lib/toast';
 import {
   apiCreateReview,
   apiUpdateReview,
@@ -212,26 +213,47 @@ async function fetchReviewByOrder(orderId: number): Promise<Review | null> {
 }
 
 async function createReview(input: { orderId: number; rating: number; comment: string }) {
-  const res = await apiCreateReview({
-    orderId: input.orderId,
-    rating: input.rating,
-    comment: input.comment,
-  });
-  broadcastReviewsChanged();
-  return res?.data || res;
+  try {
+    const res = await apiCreateReview({
+      orderId: input.orderId,
+      rating: input.rating,
+      comment: input.comment,
+    });
+    broadcastReviewsChanged();
+    showSuccess('Đã tạo đánh giá thành công!');
+    return res?.data || res;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Lỗi tạo đánh giá';
+    showError(`Lỗi: ${msg}`);
+    throw err;
+  }
 }
 async function updateReview(id: string, input: { rating: number; comment: string }) {
-  const res = await apiUpdateReview(Number(id), {
-    rating: input.rating,
-    comment: input.comment,
-  });
-  broadcastReviewsChanged();
-  return res?.data || res;
+  try {
+    const res = await apiUpdateReview(Number(id), {
+      rating: input.rating,
+      comment: input.comment,
+    });
+    broadcastReviewsChanged();
+    showSuccess('Đã cập nhật đánh giá thành công!');
+    return res?.data || res;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Lỗi cập nhật đánh giá';
+    showError(`Lỗi: ${msg}`);
+    throw err;
+  }
 }
 async function deleteReview(id: string) {
-  await apiDeleteReview(Number(id));
-  broadcastReviewsChanged();
-  return true;
+  try {
+    await apiDeleteReview(Number(id));
+    broadcastReviewsChanged();
+    showSuccess('Đã xoá đánh giá thành công!');
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Lỗi xoá đánh giá';
+    showError(`Lỗi: ${msg}`);
+    throw err;
+  }
 }
 
 /* ====== PAGE ====== */

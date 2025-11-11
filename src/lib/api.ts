@@ -77,14 +77,19 @@ export function getCurrentUserId(): string | undefined {
   const { userId, accessToken } = getAuth();
   return userId || extractUserIdFromJwt(accessToken);
 }
-export function apiUpdateAvatarUrl(avatar: string) {
-  return handle<UserResponse>(api.put('/api/user/avatar', { avatar }));
-}
-
+/**
+ * Upload avatar file - POST /api/user/avatar
+ * Backend: expects FormData with 'file' field (multipart/form-data)
+ */
 export function apiUploadAvatar(file: File) {
   const fd = new FormData();
-  fd.append('avatar', file); // tên field = "avatar"
+  fd.append('file', file); // Backend expects 'file' field
   return handle<UserResponse>(
-    api.put('/api/user/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    api.post('/api/user/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   );
+}
+
+/** 🔹 Admin endpoints */
+export function apiAdminAssignRoles(userId: string, roles: string[]) {
+  return handle<void>(api.put(`/api/admin/user/${userId}/assign-roles`, roles));
 }

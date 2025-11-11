@@ -9,6 +9,7 @@ import {
   apiUpdateShow,
   apiDeleteShow,
 } from '@/data/show.api';
+import { showSuccess, showError } from '@/lib/toast';
 
 /* ============ Helpers ============ */
 type Filters = { city: string; q: string };
@@ -85,9 +86,10 @@ export default function StaffShowsPage() {
     try {
       await apiDeleteShow(row.id);
       setRows((list) => list.filter((x) => x.id !== row.id));
+      showSuccess(`Xoá show "${row.name}" thành công!`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Delete failed';
-      alert(msg);
+      showError(`Lỗi xoá show: ${msg}`);
     }
   }
 
@@ -98,6 +100,7 @@ export default function StaffShowsPage() {
     try {
       const updated = await apiUpdateShow(editing.id, payload);
       setRows((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+      showSuccess('Cập nhật show thành công!');
       setOkMsg('Cập nhật thành công!');
       setTimeout(() => {
         setEditing(null);
@@ -105,7 +108,7 @@ export default function StaffShowsPage() {
       }, 700);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Update failed';
-      alert(msg);
+      showError(`Lỗi cập nhật show: ${msg}`);
     } finally {
       setSaving(false);
     }

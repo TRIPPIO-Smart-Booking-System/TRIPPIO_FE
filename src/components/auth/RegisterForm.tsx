@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
+import { showSuccess, showError } from '@/lib/toast';
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -27,20 +28,41 @@ export default function RegisterForm() {
 
     // Kiểm tra mật khẩu khớp nhau
     if (formData.password !== formData.confirmPassword) {
-      alert('Mật khẩu không khớp');
+      showError('Mật khẩu không khớp');
       setIsLoading(false);
       return;
     }
 
-    // Giả lập đăng ký - sau này sẽ thay bằng API thực tế
     try {
-      // Mô phỏng gọi API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Gọi API đăng ký
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-      // Chuyển hướng đến trang đăng nhập sau khi đăng ký thành công
-      window.location.href = '/login';
+      if (!response.ok) {
+        const errorData = await response.json();
+        showError(errorData.message || 'Đăng ký thất bại');
+        return;
+      }
+
+      showSuccess('Đăng ký thành công! Vui lòng kiểm tra email để xác minh tài khoản.');
+
+      // Chuyển hướng đến trang đăng nhập sau 2 giây
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
     } catch (error) {
       console.error('Đăng ký thất bại:', error);
+      showError('Đã xảy ra lỗi. Vui lòng thử lại sau.');
     } finally {
       setIsLoading(false);
     }

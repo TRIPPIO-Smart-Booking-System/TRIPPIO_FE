@@ -8,7 +8,8 @@ import EmailList, { Email } from './EmailList';
 import PhoneList, { Phone } from './PhoneList';
 import LinkedProviders, { Linked } from './LinkedProviders';
 import SectionCard from '../SectionCard';
-import { UserResponse, apiUploadAvatar, apiUpdateAvatarUrl } from '@/lib/api';
+import { UserResponse, apiUploadAvatar, apiGetMe } from '@/lib/api';
+import { showSuccess, showError } from '@/lib/toast';
 
 function toDobParts(iso?: string | null): DOB {
   if (!iso) return { d: '', m: '', y: '' };
@@ -88,10 +89,21 @@ export default function ProfileTab({
       const updated = await apiUploadAvatar(file);
       onUserChange(updated);
       setAvatar(updated.avatar ?? '');
+      showSuccess('Đã cập nhật avatar thành công');
       setOkMsg('Đã cập nhật avatar.');
       setTimeout(() => setOkMsg(null), 1200);
+
+      // Refresh user data from server to ensure sync
+      try {
+        const freshUser = await apiGetMe();
+        onUserChange(freshUser);
+      } catch (err) {
+        console.error('Failed to refresh user data:', err);
+      }
     } catch (err: unknown) {
-      setSaveErr(errToMsg(err));
+      const msg = errToMsg(err);
+      setSaveErr(msg);
+      showError(`Lỗi cập nhật avatar: ${msg}`);
     } finally {
       setAvatarBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -99,21 +111,8 @@ export default function ProfileTab({
   }
 
   async function onSubmitAvatarUrl() {
-    if (!user || !avatar?.trim()) return;
-    setAvatarBusy(true);
-    setSaveErr(null);
-    setOkMsg(null);
-    try {
-      const updated = await apiUpdateAvatarUrl(avatar.trim());
-      onUserChange(updated);
-      setAvatar(updated.avatar ?? avatar.trim());
-      setOkMsg('Đã cập nhật avatar (URL).');
-      setTimeout(() => setOkMsg(null), 1200);
-    } catch (err: unknown) {
-      setSaveErr(errToMsg(err));
-    } finally {
-      setAvatarBusy(false);
-    }
+    // Avatar URL setting is no longer supported - only file upload is available
+    return;
   }
 
   const linked: Linked[] = [
@@ -154,10 +153,6 @@ export default function ProfileTab({
                 disabled={avatarBusy}
               />
             </label>
-            <Button size="sm" onClick={onSubmitAvatarUrl} disabled={avatarBusy}>
-              Dùng URL
-            </Button>
-            {/* ❌ Bỏ nút Lưu thông tin user */}
           </div>
         }
       >
