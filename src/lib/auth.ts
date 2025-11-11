@@ -228,14 +228,31 @@ export function getCachedUser(): CachedUser | null {
 }
 
 /** Gộp (merge) partial profile vào cache hiện tại */
-export function mergeCachedUser(patch: Partial<CachedUser>) {
+export function mergeCachedUser(patch: Partial<CachedUser>, opts: { silent?: boolean } = {}) {
   const uid = getCurrentUserId();
   if (!uid || !patch) return;
+
   const map = readUserMap();
   const cur = map[uid] ?? ({ id: uid } as CachedUser);
-  map[uid] = { ...cur, ...patch, id: uid };
+  const next = { ...cur, ...patch, id: uid };
+
+  // Không làm gì nếu không có thay đổi (tránh phát event thừa)
+  if (shallowEqual(cur, next)) return;
+
+  map[uid] = next;
   writeUserMap(map);
-  if (hasWindow) window.dispatchEvent(new Event(AUTH_EVENT_NAME));
+
+  if (!opts.silent && hasWindow) {
+    window.dispatchEvent(new CustomEvent(AUTH_EVENT_NAME, { detail: { source: 'cache-merge' } }));
+  }
+}
+
+function shallowEqual(a: any, b: any) {
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
+  if (ak.length !== bk.length) return false;
+  for (const k of bk) if (a[k] !== b[k]) return false;
+  return true;
 }
 
 /** Xoá cache của user hiện tại (tuỳ chọn gọi khi logout) */

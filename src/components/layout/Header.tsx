@@ -2,9 +2,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { User, ShoppingCart, LogOut, Clock } from 'lucide-react';
+import { apiGetMe, type UserResponse } from '@/lib/api';
 
 /* ---------- helpers (dùng callback ref, không dùng RefObject) ---------- */
 function useOnClickOutsideEl<T extends HTMLElement>(el: T | null, cb: () => void) {
@@ -53,6 +55,18 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   );
 }
 
+/* -------- chuẩn hoá URL avatar (BE trả path tương đối) -------- */
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net').replace(
+  /\/+$/,
+  ''
+);
+function toAbsolute(src?: string | null) {
+  if (!src) return '';
+  if (/^https?:\/\//i.test(src)) return src;
+  if (src.startsWith('/')) return `${API_BASE}${src}`;
+  return `${API_BASE}/${src.replace(/^\/+/, '')}`;
+}
+
 /* =============================== HEADER =============================== */
 export default function Header() {
   const pathname = usePathname();
@@ -65,6 +79,9 @@ export default function Header() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // user state để lấy avatar
+  const [me, setMe] = useState<UserResponse | null>(null);
 
   // dùng callback ref thay vì RefObject để tránh TS2345
   const [ddEl, setDdEl] = useState<HTMLDivElement | null>(null);
@@ -117,6 +134,32 @@ export default function Header() {
     setDropdownOpen(false);
   }, [pathname]);
 
+  // 📥 tải /api/user/me khi đã login
+  useEffect(() => {
+    let mounted = true;
+    async function loadMe() {
+      if (!isLoggedIn) {
+        if (mounted) setMe(null);
+        return;
+      }
+      try {
+        const u = await apiGetMe();
+        if (mounted) setMe(u);
+      } catch {
+        if (mounted) setMe(null);
+      }
+    }
+    loadMe();
+
+    // refetch khi có auth:changed
+    const onAuthChanged = () => loadMe();
+    window.addEventListener('auth:changed', onAuthChanged as EventListener);
+    return () => {
+      mounted = false;
+      window.removeEventListener('auth:changed', onAuthChanged as EventListener);
+    };
+  }, [isLoggedIn]);
+
   const handleLogout = () => {
     try {
       localStorage.removeItem('userId');
@@ -127,6 +170,9 @@ export default function Header() {
     window.dispatchEvent(new Event('auth:changed'));
     window.location.href = '/login';
   };
+
+  // avatar hiển thị (ưu tiên avatar hợp lệ)
+  const avatarSrc = toAbsolute(me?.avatar);
 
   return (
     <header
@@ -201,7 +247,6 @@ export default function Header() {
               <NavLink href="/hotel">Khách sạn</NavLink>
               <NavLink href="/show">Vui chơi</NavLink>
               <NavLink href="/transport">Chuyến bay</NavLink>
-
               <NavLink href="/contact">Liên hệ</NavLink>
               {isLoggedIn && (
                 <Link
@@ -219,9 +264,22 @@ export default function Header() {
                 className="flex items-center gap-2 rounded-full px-2.5 py-1 text-white hover:bg-white/10"
                 onClick={() => setDropdownOpen((p) => !p)}
               >
-                <User className="h-5 w-5" />
+                {/* === Avatar khi login, fallback icon khi chưa có === */}
+                {isLoggedIn && avatarSrc ? (
+                  <Image
+                    src={avatarSrc}
+                    alt={me?.fullName || 'Avatar'}
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30"
+                    unoptimized
+                  />
+                ) : (
+                  <User className="h-5 w-5" />
+                )}
+
                 <span className="hidden text-[13px] font-semibold sm:inline">
-                  {isLoggedIn ? 'Tài khoản' : 'Đăng nhập'}
+                  {isLoggedIn ? me?.fullName || 'Tài khoản' : 'Đăng nhập'}
                 </span>
               </button>
 
@@ -244,14 +302,7 @@ export default function Header() {
                       >
                         🤖 AI Tư Vấn Du Lịch
                       </Link>
-                      <Link
-                        href="/admin"
-                        className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                        onClick={() => setDropdownOpen(false)}
-                      >
-                        <User className="mr-2 inline-block h-5 w-5" />
-                        Dashboard
-                      </Link>
+
                       <Link
                         href="/cart"
                         className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
@@ -310,7 +361,6 @@ export default function Header() {
           <div className="flex flex-col gap-1">
             {[
               ['/homepage', 'Trang chủ'],
-              ['/tours', 'Tours'],
               ['/hotel', 'Khách sạn'],
               ['/show', 'Vui chơi'],
               ['/about', 'Giới thiệu'],

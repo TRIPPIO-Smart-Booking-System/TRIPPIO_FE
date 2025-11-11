@@ -1,7 +1,7 @@
 // src/app/account/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ProfileTab from '@/components/account/profile/ProfileTab';
 import SecurityTab from '@/components/account/SecurityTab';
 import SidebarAccount from '@/components/account/SidebarAccount';
@@ -15,12 +15,27 @@ export default function AccountPage() {
   const [status, setStatus] = useState<'idle' | 'ok' | 'unauth'>('idle');
   const [err, setErr] = useState<string | null>(null);
 
+  // Guard: bỏ qua AUTH_EVENT phát ra do chính trang này merge cache
+  const mergingRef = useRef(false);
+
   async function loadMe() {
     setErr(null);
     try {
       const u = await apiGetMe();
       setUser(u);
-      mergeCachedUser(u); // đồng bộ local cache cho các nơi khác dùng
+
+      // Nếu mergeCachedUser hỗ trợ { silent }, dùng nó; nếu không, dùng guard mergingRef
+      mergingRef.current = true;
+      try {
+        mergeCachedUser(u, { silent: true });
+      } catch {
+        // hàm không nhận opts -> vẫn gọi bình thường, guard sẽ chặn vòng lặp
+        mergeCachedUser(u as any);
+      } finally {
+        // nhả cờ sau microtask để listener không bắt lại event vừa phát
+        queueMicrotask(() => (mergingRef.current = false));
+      }
+
       setStatus('ok');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -34,11 +49,10 @@ export default function AccountPage() {
     }
   }
 
-  // nạp user thật từ BE khi mở trang
   useEffect(() => {
     loadMe();
-    // khi login/logout ở nơi khác → reload
     const onAuth = () => {
+      if (mergingRef.current) return; // bỏ qua event do chính trang phát
       void loadMe();
     };
     window.addEventListener(AUTH_EVENT_NAME, onAuth as EventListener);
@@ -47,7 +61,15 @@ export default function AccountPage() {
 
   const onUserChange = (u: UserResponse) => {
     setUser(u);
-    mergeCachedUser(u);
+    // cập nhật cache nhưng tránh lặp (dùng silent nếu có, fallback sang guard)
+    mergingRef.current = true;
+    try {
+      mergeCachedUser(u, { silent: true });
+    } catch {
+      mergeCachedUser(u as any);
+    } finally {
+      queueMicrotask(() => (mergingRef.current = false));
+    }
   };
 
   return (

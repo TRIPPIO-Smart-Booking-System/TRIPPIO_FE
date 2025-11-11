@@ -20,11 +20,23 @@ export default function ChatWidget() {
     };
   }, []);
 
+  // helper đóng + phát sự kiện để FloatingDock hiện lại
+  const closeChat = () => {
+    setOpen(false);
+    window.dispatchEvent(new Event('app:closeChat'));
+  };
+
   // ESC đóng
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    if (open) window.addEventListener('keydown', onKey);
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeChat();
+    window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // (tuỳ chọn) đồng bộ trạng thái qua event bus cho chắc
+  useEffect(() => {
+    window.dispatchEvent(new Event(open ? 'app:openChat' : 'app:closeChat'));
   }, [open]);
 
   if (!open) return null;
@@ -35,7 +47,7 @@ export default function ChatWidget() {
       <div
         ref={overlayRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current) setOpen(false);
+          if (e.target === overlayRef.current) closeChat();
         }}
         className="fixed inset-0 z-[60] bg-black/10"
       />
@@ -59,7 +71,7 @@ export default function ChatWidget() {
             </div>
           </div>
           <button
-            onClick={() => setOpen(false)}
+            onClick={closeChat}
             aria-label="Close"
             className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100"
             title="Close (Esc)"
@@ -69,7 +81,6 @@ export default function ChatWidget() {
         </div>
 
         <div className="flex-1 overflow-hidden">
-          {/* dùng bản modal để composer dính đáy */}
           <ChatBox variant="modal" />
         </div>
       </div>
