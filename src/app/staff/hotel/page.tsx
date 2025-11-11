@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getAuth } from '@/lib/auth';
 import { Plus, Search, Trash2, Loader, ArrowLeft } from 'lucide-react';
+import { showSuccess, showError, showWarning } from '@/lib/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
 
@@ -59,7 +60,10 @@ export default function HotelManagePage() {
   }, []);
 
   async function onDelete(id: string) {
-    if (!confirm('Bạn chắc chắn muốn xóa?')) return;
+    showWarning('Xóa hotel này?', { autoClose: false });
+    const confirmed = confirm('Bạn chắc chắn muốn xóa hotel này?');
+    if (!confirmed) return;
+
     try {
       const res = await fetch(`${API_BASE}/api/Hotel/${id}`, {
         method: 'DELETE',
@@ -67,8 +71,10 @@ export default function HotelManagePage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setHotels((prev) => prev.filter((h) => h.id !== id));
+      showSuccess('Đã xóa hotel thành công');
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Xóa thất bại');
+      const msg = e instanceof Error ? e.message : 'Xóa thất bại';
+      showError(`Lỗi xóa hotel: ${msg}`);
     }
   }
 

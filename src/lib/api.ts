@@ -96,5 +96,8 @@ export function apiUploadAvatar(file: File) {
   fd.append('file', file); // tên field đúng theo Swagger
   return handle<UserResponse>(api.post('/api/user/avatar', fd));
 }
-
+/** 🔹 Admin endpoints */
+export function apiAdminAssignRoles(userId: string, roles: string[]) {
+  return handle<void>(api.put(`/api/admin/user/${userId}/assign-roles`, roles));
+}
 export default api;

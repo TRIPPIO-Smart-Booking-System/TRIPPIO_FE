@@ -33,6 +33,8 @@ import {
   loadLocalHistory as loadLocalPayments,
   fmtVND as fmtVND_Pay,
 } from '@/lib/payment';
+import { showSuccess, showError } from '@/lib/toast';
+import { apiAdminAssignRoles } from '@/lib/api';
 
 import type { ApexOptions } from 'apexcharts';
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -230,6 +232,11 @@ export default function AdminDashboardPage() {
   // reviews (local) + mapping với payments
   const [reviews, setReviews] = useState<LocalReview[]>([]);
 
+  // role management
+  const [editingUserRole, setEditingUserRole] = useState<string | null>(null);
+  const [editingUserRoles, setEditingUserRoles] = useState<string[]>([]);
+  const [savingRole, setSavingRole] = useState(false);
+
   // filters
   const [qPays, setQPays] = useState('');
   const [payStatus, setPayStatus] = useState<'ALL' | PaymentStatus>('ALL');
@@ -253,6 +260,31 @@ export default function AdminDashboardPage() {
       localStorage.removeItem('accessToken');
     } catch {}
     router.replace('/login');
+  }
+
+  async function onEditUserRole(userId: string, currentRoles: string[]) {
+    setEditingUserRole(userId);
+    setEditingUserRoles([...currentRoles]);
+  }
+
+  async function onSaveUserRole() {
+    if (!editingUserRole) return;
+    setSavingRole(true);
+    try {
+      await apiAdminAssignRoles(editingUserRole, editingUserRoles);
+      // Update user in the list
+      setUsers((prev) =>
+        prev.map((u) => (u.id === editingUserRole ? { ...u, roles: editingUserRoles } : u))
+      );
+      showSuccess(`Cập nhật role cho user thành công!`);
+      setEditingUserRole(null);
+      setEditingUserRoles([]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi cập nhật role';
+      showError(`Lỗi: ${msg}`);
+    } finally {
+      setSavingRole(false);
+    }
   }
 
   async function loadAll() {
@@ -1460,62 +1492,131 @@ export default function AdminDashboardPage() {
                         u.email.toLowerCase().includes(qUsers.toLowerCase()) ||
                         u.phoneNumber.includes(qUsers)
                   )
-                  .map((user) => (
-                    <div
-                      key={user.id}
-                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        {/* Username */}
-                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200">
-                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Username
+                  .map((user) =>
+                    editingUserRole === user.id ? (
+                      // Role Edit Modal
+                      <div
+                        key={user.id}
+                        className="rounded-xl border-2 border-blue-300 bg-blue-50 p-4 shadow-lg"
+                      >
+                        <div className="mb-3">
+                          <div className="text-sm font-semibold text-slate-900">
+                            Chỉnh sửa Role: <span className="text-blue-600">{user.fullName}</span>
                           </div>
-                          <div className="mt-1 font-mono text-sm font-medium text-slate-900">
-                            {user.userName}
-                          </div>
+                          <div className="mt-1 text-xs text-slate-600">{user.email}</div>
                         </div>
 
-                        {/* Full Name */}
-                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
-                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Họ Tên
-                          </div>
-                          <div className="mt-1 text-sm font-medium text-slate-900">
-                            {user.fullName}
-                          </div>
+                        <div className="mb-4 space-y-2">
+                          {['Customer', 'Staff', 'Admin'].map((role) => (
+                            <label key={role} className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={editingUserRoles.includes(role)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditingUserRoles([...editingUserRoles, role]);
+                                  } else {
+                                    setEditingUserRoles(editingUserRoles.filter((r) => r !== role));
+                                  }
+                                }}
+                                className="rounded"
+                              />
+                              <span>{role}</span>
+                            </label>
+                          ))}
                         </div>
 
-                        {/* Email */}
-                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
-                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Email
-                          </div>
-                          <div className="mt-1 text-sm text-slate-600 truncate">{user.email}</div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={onSaveUserRole}
+                            disabled={savingRole}
+                            className="flex-1 rounded-lg bg-blue-600 text-white px-3 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {savingRole ? 'Đang lưu…' : 'Lưu'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingUserRole(null);
+                              setEditingUserRoles([]);
+                            }}
+                            className="flex-1 rounded-lg border bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50"
+                          >
+                            Hủy
+                          </button>
                         </div>
-
-                        {/* Phone */}
-                        <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
-                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Điện Thoại
+                      </div>
+                    ) : (
+                      // User Card
+                      <div
+                        key={user.id}
+                        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                          {/* Username */}
+                          <div className="pb-4 md:pb-0 md:border-r md:border-slate-200">
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Username
+                            </div>
+                            <div className="mt-1 font-mono text-sm font-medium text-slate-900">
+                              {user.userName}
+                            </div>
                           </div>
-                          <div className="mt-1 text-sm text-slate-600">{user.phoneNumber}</div>
-                        </div>
 
-                        {/* Last Login */}
-                        <div className="md:pl-4">
-                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Lần Đăng Nhập
+                          {/* Full Name */}
+                          <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Họ Tên
+                            </div>
+                            <div className="mt-1 text-sm font-medium text-slate-900">
+                              {user.fullName}
+                            </div>
                           </div>
-                          <div className="mt-1 text-sm text-slate-600">
-                            {user.lastLoginDate
-                              ? new Date(user.lastLoginDate).toLocaleDateString('vi-VN')
-                              : '—'}
+
+                          {/* Email */}
+                          <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Email
+                            </div>
+                            <div className="mt-1 text-sm text-slate-600 truncate">{user.email}</div>
+                          </div>
+
+                          {/* Roles */}
+                          <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Roles
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {user.roles && user.roles.length > 0 ? (
+                                user.roles.map((role) => (
+                                  <span
+                                    key={role}
+                                    className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded"
+                                  >
+                                    {role}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs text-slate-500">Không có role</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="md:pl-4">
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Hành động
+                            </div>
+                            <button
+                              onClick={() => onEditUserRole(user.id, user.roles || [])}
+                              className="mt-1 w-full text-xs rounded-lg bg-sky-600 text-white px-2 py-1 hover:bg-sky-700 font-medium"
+                            >
+                              Chỉnh sửa
+                            </button>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
               </div>
             ) : (
               <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">

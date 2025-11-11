@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth } from '@/lib/auth';
+import { showSuccess, showError } from '@/lib/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
 
@@ -46,9 +47,14 @@ export default function CreateHotelPage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} tạo Hotel thất bại`);
       const created = (await res.json().catch(() => ({}))) as { id?: string };
-      router.push(created?.id ? `/hotel/${created.id}` : '/staff/hotel');
+      showSuccess('Đã tạo hotel thành công');
+      setTimeout(() => {
+        router.push(created?.id ? `/hotel/${created.id}` : '/staff/hotel');
+      }, 500);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Create failed');
+      const msg = e instanceof Error ? e.message : 'Tạo hotel thất bại';
+      setErr(msg);
+      showError(`Lỗi tạo hotel: ${msg}`);
     } finally {
       setLoading(false);
     }
