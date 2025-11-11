@@ -451,19 +451,6 @@ export default function HotelDetailPage() {
                     else showError(`Thêm giỏ thất bại: ${msg}`);
                   }
                 }}
-                onBookNow={async () => {
-                  const q = qty[selectedRoom.id] ?? 1;
-                  const errMsg = ensureDatesValid() || checkRoomConstraints(selectedRoom, q);
-                  if (errMsg) return alert(errMsg);
-                  try {
-                    await apiBookNow(selectedRoom, q);
-                    alert('Đặt phòng thành công!');
-                  } catch (e) {
-                    const msg = (e as Error).message || '';
-                    if (msg.includes('→ 401')) alert('Bạn cần đăng nhập để đặt phòng (401).');
-                    else alert(`Đặt phòng thất bại: ${msg}`);
-                  }
-                }}
               />
             ) : !hotel.rooms?.length ? (
               <div className="rounded-2xl border bg-white p-6 text-sm text-zinc-600">
@@ -968,7 +955,6 @@ function RoomDetailPanel({
   nights,
   totalGuests,
   onAddToCart,
-  onBookNow,
 }: {
   room: ApiRoom;
   qty: number;
@@ -976,7 +962,6 @@ function RoomDetailPanel({
   nights: number;
   totalGuests: number;
   onAddToCart: () => void;
-  onBookNow: () => void;
 }) {
   const perNight = room.pricePerNight;
   const subtotal = perNight * qty * nights;
@@ -1053,12 +1038,6 @@ function RoomDetailPanel({
               className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-zinc-50"
             >
               Thêm vào giỏ
-            </button>
-            <button
-              onClick={onBookNow}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
-            >
-              Đặt ngay
             </button>
             <a
               href="."
