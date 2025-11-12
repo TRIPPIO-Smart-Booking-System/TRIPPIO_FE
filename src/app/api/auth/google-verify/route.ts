@@ -1,4 +1,3 @@
-import { postJSON } from '@/lib/http';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface GoogleVerifyRequest {
@@ -21,38 +20,58 @@ interface GoogleVerifyResponse {
 
 /**
  * POST /api/auth/google-verify
- * Nhận JWT từ FE (Google), gửi lên Backend để verify + sinh JWT riêng
+ * Frontend proxy route: Google JWT → Backend ASP.NET → return JWT
  */
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as GoogleVerifyRequest;
 
-    if (!body.token) {
+    if (!body?.token) {
       return NextResponse.json(
         { isSuccess: false, message: 'Token không hợp lệ' },
         { status: 400 }
       );
     }
 
-    // Gửi token lên Backend ASP.NET
-    // Backend sẽ verify chữ ký Google, create/get user, return JWT riêng
+    // Get backend URL from env or use default
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://trippio.azurewebsites.net';
-    const response = await postJSON<GoogleVerifyResponse>(`${backendUrl}/api/auth/google-verify`, {
-      token: body.token,
-    });
+    const googleVerifyUrl = new URL('/api/auth/google-verify', backendUrl).toString();
 
-    // Trả về response từ backend cho FE
-    return NextResponse.json(response, {
-      status: 200,
+    console.log('[FE API Route] Forwarding to:', googleVerifyUrl);
+
+    // Forward request to backend
+    const backendResponse = await fetch(googleVerifyUrl, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ token: body.token }),
     });
+
+    const responseData = (await backendResponse.json()) as GoogleVerifyResponse;
+
+    // If backend failed, return error
+    if (!backendResponse.ok) {
+      console.error('[FE API Route] Backend error:', backendResponse.status, responseData);
+      return NextResponse.json(
+        {
+          isSuccess: false,
+          message: responseData?.message || 'Backend xác thực thất bại',
+        },
+        { status: backendResponse.status }
+      );
+    }
+
+    // Success - return backend response
+    console.log('[FE API Route] Backend success, user:', responseData?.user?.email);
+    return NextResponse.json(responseData, { status: 200 });
   } catch (error: unknown) {
-    console.error('Google verify error:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Lỗi server';
+    console.error('[FE API Route] Exception:', errorMsg, error);
 
-    const errorMsg = error instanceof Error ? error.message : 'Lỗi khi xác thực Google';
-
-    return NextResponse.json({ isSuccess: false, message: errorMsg }, { status: 500 });
+    return NextResponse.json(
+      { isSuccess: false, message: `Lỗi xác thực: ${errorMsg}` },
+      { status: 500 }
+    );
   }
 }
