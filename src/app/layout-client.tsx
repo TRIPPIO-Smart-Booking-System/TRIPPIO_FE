@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { preloadAllData } from '@/lib/dataCache';
 
 export default function RootLayoutClient({ children }: { children: React.ReactNode }) {
@@ -12,7 +13,7 @@ export default function RootLayoutClient({ children }: { children: React.ReactNo
   }, []);
 
   return (
-    <>
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
       {children}
       <ToastContainer
         position="top-right"
@@ -26,6 +27,6 @@ export default function RootLayoutClient({ children }: { children: React.ReactNo
         pauseOnHover
         theme="light"
       />
-    </>
+    </GoogleOAuthProvider>
   );
 }

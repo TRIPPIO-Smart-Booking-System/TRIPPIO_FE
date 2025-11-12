@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { postJSON } from '@/lib/http';
 import { extractUserIdFromJwt, setAuth } from '@/lib/auth';
 import { showSuccess, showError, showInfo } from '@/lib/toast';
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 
 /* ----------------------------- Types ----------------------------- */
 type LoginPayload = { usernameOrPhone: string; password: string };
@@ -441,6 +442,23 @@ export default function LoginForm() {
                     <span>Đăng nhập</span>
                   )}
                 </button>
+
+                {/* Google Login Divider */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-neutral-300 dark:border-neutral-600" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white/75 text-neutral-600 dark:bg-neutral-900/60 dark:text-neutral-400">
+                      Hoặc
+                    </span>
+                  </div>
+                </div>
+
+                {/* Google Login Button */}
+                <div className="w-full">
+                  <GoogleLoginButton />
+                </div>
 
                 <p className="pt-1.5 text-center text-sm text-neutral-600 dark:text-neutral-300">
                   Chưa có tài khoản?{' '}
