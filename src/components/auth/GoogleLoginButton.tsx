@@ -72,7 +72,8 @@ export default function GoogleLoginButton() {
 
         showSuccess('Đăng nhập Google thành công!');
 
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:changed'));
+        // Dispatch auth:changed event for layout to detect login
+        window.dispatchEvent(new Event('auth:changed'));
 
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
         const roles = data.user?.roles || [];
@@ -87,7 +88,7 @@ export default function GoogleLoginButton() {
         router.refresh();
       } else if (data?.isSuccess) {
         showSuccess('Đăng nhập Google thành công!');
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:changed'));
+        window.dispatchEvent(new Event('auth:changed'));
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
         router.replace(redirectParam || '/homepage');
         router.refresh();
@@ -106,15 +107,19 @@ export default function GoogleLoginButton() {
 
   const login = useGoogleLogin({
     onSuccess: (res) => {
-      // some versions return access_token directly, others return credential
-      // the hook returns access_token for popup mode
-      const token = (res as any).access_token || (res as any).credential;
-      handleGoogleSuccess(token);
+      // auth-code flow returns a credential (JWT ID token)
+      const token = (res as any).credential;
+      if (token) {
+        handleGoogleSuccess(token);
+      } else {
+        showError('Không nhận được Google credential');
+      }
     },
-    onError: () => {
+    onError: (errorResp) => {
+      console.error('Google login error response:', errorResp);
       showError('Đăng nhập Google thất bại. Vui lòng thử lại.');
     },
-    flow: 'implicit',
+    flow: 'auth-code',
   });
 
   return (

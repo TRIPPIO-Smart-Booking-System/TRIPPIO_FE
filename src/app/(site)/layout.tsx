@@ -87,12 +87,13 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname() || '/';
   const [ready, setReady] = useState(false);
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [tokenExists, setTokenExists] = useState(false);
 
-  // No unnecessary deps warning: compute once (reload on 'auth:changed' anyway)
-  const tokenExists = useMemo(() => (typeof window !== 'undefined' ? hasToken() : false), []);
   const isPublic = useMemo(() => isPublicPath(pathname), [pathname]);
 
   useEffect(() => {
+    // Only run on client after mount to avoid hydration mismatch
+    setTokenExists(hasToken());
     setReady(true);
     const onAuth = () => location.reload();
     window.addEventListener('auth:changed', onAuth as EventListener);

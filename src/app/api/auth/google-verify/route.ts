@@ -33,10 +33,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get backend URL from env or use default
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://trippio.azurewebsites.net';
-    const googleVerifyUrl = new URL('/api/auth/google-verify', backendUrl).toString();
+    // Get backend URL from env - required!
+    let backendUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
+    // Fallback for production
+    if (!backendUrl) {
+      backendUrl = 'https://trippio.azurewebsites.net';
+    }
+
+    // Ensure no trailing slash
+    backendUrl = backendUrl.replace(/\/$/, '');
+    const googleVerifyUrl = `${backendUrl}/api/auth/google-verify`;
+
+    console.log('[FE API Route] Backend URL:', backendUrl);
     console.log('[FE API Route] Forwarding to:', googleVerifyUrl);
 
     // Forward request to backend
@@ -44,33 +53,60 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
       body: JSON.stringify({ token: body.token }),
+      signal: AbortSignal.timeout(30000), // 30s timeout
     });
 
-    const responseData = (await backendResponse.json()) as GoogleVerifyResponse;
-
-    // If backend failed, return error
-    if (!backendResponse.ok) {
-      console.error('[FE API Route] Backend error:', backendResponse.status, responseData);
+    let responseData: GoogleVerifyResponse;
+    try {
+      responseData = (await backendResponse.json()) as GoogleVerifyResponse;
+    } catch (parseError) {
+      console.error('[FE API Route] Failed to parse backend JSON:', parseError);
       return NextResponse.json(
         {
           isSuccess: false,
-          message: responseData?.message || 'Backend xác thực thất bại',
+          message: `Backend returned invalid JSON: ${backendResponse.statusText}`,
+        },
+        { status: 502 }
+      );
+    }
+
+    // If backend failed, return error
+    if (!backendResponse.ok) {
+      console.error('[FE API Route] Backend error:', {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        data: responseData,
+      });
+      return NextResponse.json(
+        {
+          isSuccess: false,
+          message: responseData?.message || `Backend error: ${backendResponse.statusText}`,
         },
         { status: backendResponse.status }
       );
     }
 
     // Success - return backend response
-    console.log('[FE API Route] Backend success, user:', responseData?.user?.email);
+    console.log('[FE API Route] ✅ Backend success, user:', responseData?.user?.email);
     return NextResponse.json(responseData, { status: 200 });
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : 'Lỗi server';
-    console.error('[FE API Route] Exception:', errorMsg, error);
+    const errorMsg = error instanceof Error ? error.message : 'Lỗi server không xác định';
+    const errorStack = error instanceof Error ? error.stack : '';
+
+    console.error('[FE API Route] ❌ Exception:', {
+      message: errorMsg,
+      stack: errorStack,
+      error,
+    });
 
     return NextResponse.json(
-      { isSuccess: false, message: `Lỗi xác thực: ${errorMsg}` },
+      {
+        isSuccess: false,
+        message: `Lỗi server: ${errorMsg}`,
+      },
       { status: 500 }
     );
   }
