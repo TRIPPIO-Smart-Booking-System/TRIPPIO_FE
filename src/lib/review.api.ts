@@ -1,7 +1,7 @@
 // src/lib/review.api.ts
 import { getAuth } from '@/lib/auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippiowebapp.azurewebsites.net';
 
 export type CreateReviewReq = {
   orderId: number | string;

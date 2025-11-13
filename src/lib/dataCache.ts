@@ -83,7 +83,7 @@ const cache: {
   error: null,
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippiowebapp.azurewebsites.net';
 
 // Fetch all data in parallel
 export async function preloadAllData() {

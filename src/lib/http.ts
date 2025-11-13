@@ -1,5 +1,5 @@
 // src/lib/http.ts
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net'; // phải có vì gọi từ client
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippiowebapp.azurewebsites.net'; // phải có vì gọi từ client
 
 function joinUrl(base: string, path: string) {
   if (!base) return path;

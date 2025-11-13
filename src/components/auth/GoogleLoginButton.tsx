@@ -9,61 +9,24 @@ export default function GoogleLoginButton() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleSuccess = async (accessToken: string | undefined) => {
-    if (!accessToken) {
+  const handleGoogleSuccess = async (authCode: string | undefined) => {
+    if (!authCode) {
       showError('Google login thất bại');
       return;
     }
 
     setIsLoading(true);
     try {
-      console.log('[GoogleLoginButton] Starting login with access_token');
-
-      // Step 1: Get user info from Google using access_token
-      console.log('[GoogleLoginButton] Fetching Google user info...');
-      const userInfoResponse = await fetch(
-        `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${accessToken}`,
-        { method: 'GET' }
-      );
-
-      if (!userInfoResponse.ok) {
-        console.error('[GoogleLoginButton] Failed to get user info:', userInfoResponse.status);
-        showError('Không thể lấy thông tin Google');
-        return;
-      }
-
-      const userInfo = await userInfoResponse.json();
-      console.log('[GoogleLoginButton] Google user info:', {
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-      });
-
+      console.log('[GoogleLoginButton] Starting login with authorization code');
       showInfo('Đang xác thực với Google...');
 
-      // Step 2: Get ID token from Google tokeninfo endpoint
-      console.log('[GoogleLoginButton] Getting tokeninfo to extract ID token...');
-      const tokeninfoResponse = await fetch(
-        `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`
-      );
-
-      let idToken = accessToken; // Fallback: use access_token if can't get ID token
-
-      if (tokeninfoResponse.ok) {
-        const tokeninfo = await tokeninfoResponse.json();
-        console.log('[GoogleLoginButton] Tokeninfo:', {
-          email: tokeninfo.email,
-          verified_email: tokeninfo.verified_email,
-        });
-        // The access_token itself will be sent, backend validates it with Google
-      }
-
-      // Step 3: Send token to our backend API
-      console.log('[GoogleLoginButton] Sending to /api/auth/google-verify');
+      // Send authorization code to our backend API
+      // Backend will exchange code for tokens with Google
+      console.log('[GoogleLoginButton] Sending authorization code to /api/auth/google-verify');
       const response = await fetch('/api/auth/google-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: idToken }),
+        body: JSON.stringify({ code: authCode }),
       });
 
       console.log('[GoogleLoginButton] Backend response status:', response.status);
@@ -149,23 +112,25 @@ export default function GoogleLoginButton() {
     onSuccess: async (response) => {
       console.log('[GoogleLoginButton] Google response:', response);
 
-      // implicit flow returns access_token
-      const token = (response as any).access_token;
+      // auth-code flow returns code (authorization code)
+      const code = (response as any).code;
 
-      if (!token) {
-        console.error('[GoogleLoginButton] No access_token in response');
-        showError('Không nhận được token từ Google');
+      if (!code) {
+        console.error('[GoogleLoginButton] No authorization code in response');
+        showError('Không nhận được code từ Google');
         return;
       }
 
-      console.log('[GoogleLoginButton] Got access_token, sending to backend...');
-      handleGoogleSuccess(token);
+      console.log('[GoogleLoginButton] Got authorization code, sending to backend...');
+      // Send code to backend, backend will exchange for tokens
+      handleGoogleSuccess(code);
     },
     onError: (errorResp: any) => {
       console.error('[GoogleLoginButton] Google OAuth error:', errorResp);
       showError('Đăng nhập Google thất bại. Vui lòng thử lại.');
     },
-    flow: 'implicit',
+    flow: 'auth-code',
+    scope: 'openid email profile',
   });
 
   return (

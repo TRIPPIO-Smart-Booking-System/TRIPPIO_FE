@@ -1,5 +1,6 @@
 // src/lib/api-transports.ts
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://trippio.azurewebsites.net';
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://trippiowebapp.azurewebsites.net';
 
 /**
  * Transport & Trip API types - matches backend
