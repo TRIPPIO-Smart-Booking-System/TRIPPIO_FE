@@ -9,24 +9,23 @@ export default function GoogleLoginButton() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleSuccess = async (authCode: string | undefined) => {
-    if (!authCode) {
+  const handleGoogleSuccess = async (token: string | undefined) => {
+    if (!token) {
       showError('Google login thất bại');
       return;
     }
 
     setIsLoading(true);
     try {
-      console.log('[GoogleLoginButton] Starting login with authorization code');
-      showInfo('Đang xác thực với Google...');
+      console.log('[GoogleLoginButton] Starting login with token');
 
-      // Send authorization code to our backend API
-      // Backend will exchange code for tokens with Google
-      console.log('[GoogleLoginButton] Sending authorization code to /api/auth/google-verify');
-      const response = await fetch('/api/auth/google-verify', {
+      // Send token to our backend API (direct to backend, no FE proxy)
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://trippiowebapp.azurewebsites.net'}/api/auth/google-verify`;
+      console.log('[GoogleLoginButton] Sending token to backend:', apiUrl);
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: authCode }),
+        body: JSON.stringify({ token }),
       });
 
       console.log('[GoogleLoginButton] Backend response status:', response.status);
@@ -112,24 +111,26 @@ export default function GoogleLoginButton() {
     onSuccess: async (response) => {
       console.log('[GoogleLoginButton] Google response:', response);
 
-      // auth-code flow returns code (authorization code)
-      const code = (response as any).code;
+      // Try to get id_token from response
+      // With implicit flow + scope openid, Google should return id_token
+      let token =
+        (response as any).id_token || (response as any).code || (response as any).access_token;
 
-      if (!code) {
-        console.error('[GoogleLoginButton] No authorization code in response');
-        showError('Không nhận được code từ Google');
+      if (!token) {
+        console.error('[GoogleLoginButton] No token in response');
+        showError('Không nhận được token từ Google');
         return;
       }
 
-      console.log('[GoogleLoginButton] Got authorization code, sending to backend...');
-      // Send code to backend, backend will exchange for tokens
-      handleGoogleSuccess(code);
+      console.log('[GoogleLoginButton] Got token, sending to backend...');
+      // Send token to backend
+      handleGoogleSuccess(token);
     },
     onError: (errorResp: any) => {
       console.error('[GoogleLoginButton] Google OAuth error:', errorResp);
       showError('Đăng nhập Google thất bại. Vui lòng thử lại.');
     },
-    flow: 'auth-code',
+    flow: 'implicit',
     scope: 'openid email profile',
   });
 
