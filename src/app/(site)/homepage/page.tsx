@@ -13,7 +13,7 @@ import Footer from '@/components/layout/Footer';
 // Random image utils
 function getRandomShowImage(seed: number): string {
   const shows = ['show1', 'show2', 'show3', 'show4', 'show5', 'show6'];
-  const ext = ['webp', 'jpg', 'webp', 'jpg', 'webp', 'webp'];
+  const ext = ['webp', 'jpg', 'webp', 'webp', 'webp', 'jpg']; // Fixed: show4 is .webp, not .jpg
   const idx = seed % shows.length;
   return `/images/show/${shows[idx]}.${ext[idx]}`;
 }
