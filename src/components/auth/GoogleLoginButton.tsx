@@ -2,51 +2,77 @@
 
 import React, { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
 import { showError, showInfo, showSuccess } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
-
-interface GoogleTokenPayload {
-  email: string;
-  name: string;
-  picture: string;
-  sub: string;
-  aud: string;
-  exp: number;
-  iat: number;
-  [key: string]: unknown;
-}
 
 export default function GoogleLoginButton() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleSuccess = async (token: string | undefined) => {
-    if (!token) {
+  const handleGoogleSuccess = async (accessToken: string | undefined) => {
+    if (!accessToken) {
       showError('Google login thất bại');
       return;
     }
 
     setIsLoading(true);
     try {
-      // Decode JWT để xem thông tin (optional)
-      const decoded = jwtDecode<GoogleTokenPayload>(token);
-      console.log('Google user info:', {
-        email: decoded.email,
-        name: decoded.name,
-        picture: decoded.picture,
+      console.log('[GoogleLoginButton] Starting login with access_token');
+
+      // Step 1: Get user info from Google using access_token
+      console.log('[GoogleLoginButton] Fetching Google user info...');
+      const userInfoResponse = await fetch(
+        `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${accessToken}`,
+        { method: 'GET' }
+      );
+
+      if (!userInfoResponse.ok) {
+        console.error('[GoogleLoginButton] Failed to get user info:', userInfoResponse.status);
+        showError('Không thể lấy thông tin Google');
+        return;
+      }
+
+      const userInfo = await userInfoResponse.json();
+      console.log('[GoogleLoginButton] Google user info:', {
+        email: userInfo.email,
+        name: userInfo.name,
+        picture: userInfo.picture,
       });
 
       showInfo('Đang xác thực với Google...');
 
-      // Gửi token lên backend để xác thực
+      // Step 2: Get ID token from Google tokeninfo endpoint
+      console.log('[GoogleLoginButton] Getting tokeninfo to extract ID token...');
+      const tokeninfoResponse = await fetch(
+        `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`
+      );
+
+      let idToken = accessToken; // Fallback: use access_token if can't get ID token
+
+      if (tokeninfoResponse.ok) {
+        const tokeninfo = await tokeninfoResponse.json();
+        console.log('[GoogleLoginButton] Tokeninfo:', {
+          email: tokeninfo.email,
+          verified_email: tokeninfo.verified_email,
+        });
+        // The access_token itself will be sent, backend validates it with Google
+      }
+
+      // Step 3: Send token to our backend API
+      console.log('[GoogleLoginButton] Sending to /api/auth/google-verify');
       const response = await fetch('/api/auth/google-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token: idToken }),
       });
 
+      console.log('[GoogleLoginButton] Backend response status:', response.status);
       const data = await response.json();
+      console.log('[GoogleLoginButton] Backend response:', {
+        isSuccess: data?.isSuccess,
+        userEmail: data?.user?.email,
+        hasAccessToken: !!data?.accessToken,
+      });
 
       if (!response.ok) {
         showError(data?.message || 'Xác thực Google thất bại');
@@ -96,9 +122,23 @@ export default function GoogleLoginButton() {
         showError('Không thể hoàn thành đăng nhập');
       }
     } catch (error: unknown) {
-      console.error('Google login error:', error);
-      const errorMsg =
-        error instanceof Error ? error.message : 'Đăng nhập Google thất bại. Vui lòng thử lại.';
+      console.error('[GoogleLoginButton] Catch block - error:', error);
+      console.error('[GoogleLoginButton] Error type:', typeof error);
+      console.error(
+        '[GoogleLoginButton] Error keys:',
+        error instanceof Error ? Object.keys(error) : 'N/A'
+      );
+
+      let errorMsg = 'Đăng nhập Google thất bại. Vui lòng thử lại.';
+
+      if (error instanceof Error) {
+        errorMsg = error.message;
+        console.error('[GoogleLoginButton] Error message:', errorMsg);
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMsg = String((error as any).message);
+      }
+
+      console.error('[GoogleLoginButton] Final error message:', errorMsg);
       showError(errorMsg);
     } finally {
       setIsLoading(false);
@@ -106,20 +146,26 @@ export default function GoogleLoginButton() {
   };
 
   const login = useGoogleLogin({
-    onSuccess: (res) => {
-      // auth-code flow returns a credential (JWT ID token)
-      const token = (res as any).credential;
-      if (token) {
-        handleGoogleSuccess(token);
-      } else {
-        showError('Không nhận được Google credential');
+    onSuccess: async (response) => {
+      console.log('[GoogleLoginButton] Google response:', response);
+
+      // implicit flow returns access_token
+      const token = (response as any).access_token;
+
+      if (!token) {
+        console.error('[GoogleLoginButton] No access_token in response');
+        showError('Không nhận được token từ Google');
+        return;
       }
+
+      console.log('[GoogleLoginButton] Got access_token, sending to backend...');
+      handleGoogleSuccess(token);
     },
-    onError: (errorResp) => {
-      console.error('Google login error response:', errorResp);
+    onError: (errorResp: any) => {
+      console.error('[GoogleLoginButton] Google OAuth error:', errorResp);
       showError('Đăng nhập Google thất bại. Vui lòng thử lại.');
     },
-    flow: 'auth-code',
+    flow: 'implicit',
   });
 
   return (

@@ -1,5 +1,6 @@
 import Hero from '@/components/home/Hero';
 import FeaturedTours from '@/components/home/FeaturedTours';
+import FeaturedTransportTrips from '@/components/home/FeaturedTransportTrips';
 import WhyChooseUs from '@/components/home/WhyChooseUs';
 import Newsletter from '@/components/home/Newsletter';
 import DreamDestinations from '@/components/home/DreamDestinations';
@@ -17,9 +18,10 @@ export default function Home() {
         <Hero />
 
         <FeaturedTours />
+        <FeaturedTopTours />
+        <FeaturedTransportTrips />
         <DreamDestinations />
         <PopularDestinations />
-        <FeaturedTopTours />
         <WhyChooseUs />
         <Newsletter />
         <Footer />

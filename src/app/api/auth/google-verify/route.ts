@@ -20,7 +20,11 @@ interface GoogleVerifyResponse {
 
 /**
  * POST /api/auth/google-verify
- * Frontend proxy route: Google JWT → Backend ASP.NET → return JWT
+ *
+ * Flow:
+ * 1. Frontend sends Google access_token (from implicit flow)
+ * 2. This route forwards to C# backend for verification
+ * 3. Returns user info + JWT tokens to frontend
  */
 export async function POST(request: NextRequest) {
   try {
@@ -33,15 +37,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get backend URL from env - required!
-    let backendUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+    console.log('[FE API Route] Received Google token');
 
-    // Fallback for production
+    // Get backend URL from env
+    let backendUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
     if (!backendUrl) {
       backendUrl = 'https://trippio.azurewebsites.net';
     }
 
-    // Ensure no trailing slash
     backendUrl = backendUrl.replace(/\/$/, '');
     const googleVerifyUrl = `${backendUrl}/api/auth/google-verify`;
 
@@ -64,6 +67,9 @@ export async function POST(request: NextRequest) {
       responseData = (await backendResponse.json()) as GoogleVerifyResponse;
     } catch (parseError) {
       console.error('[FE API Route] Failed to parse backend JSON:', parseError);
+      const responseText = await backendResponse.text();
+      console.error('[FE API Route] Backend response text:', responseText);
+
       return NextResponse.json(
         {
           isSuccess: false,

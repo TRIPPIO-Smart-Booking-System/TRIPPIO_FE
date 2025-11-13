@@ -31,14 +31,7 @@ export default function RootLayoutClient({ children }: { children: React.ReactNo
   }, []);
 
   return (
-    <GoogleOAuthProvider
-      clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}
-      onScriptTagProps={{
-        async: true,
-        defer: true,
-        crossOrigin: 'anonymous',
-      }}
-    >
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
       {children}
       <ToastContainer
         position="top-right"

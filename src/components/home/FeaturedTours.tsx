@@ -7,12 +7,29 @@ import 'swiper/css/navigation';
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Container from '@/components/layout/Container';
-import { mockHotels } from '@/data/mockData';
+import { apiFeaturedHotels, type ApiHotel } from '@/lib/api-hotels';
 
 export default function FeaturedToursSwiper() {
-  const topHotels = mockHotels.slice(0, 6);
+  const [hotels, setHotels] = useState<ApiHotel[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadHotels() {
+      try {
+        const data = await apiFeaturedHotels(6);
+        setHotels(data);
+      } catch (error) {
+        console.error('Failed to load featured hotels:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadHotels();
+  }, []);
 
   return (
     <section className="py-16">
@@ -43,49 +60,58 @@ export default function FeaturedToursSwiper() {
           </div>
 
           {/* Swiper */}
-          <Swiper
-            modules={[Navigation]}
-            navigation
-            spaceBetween={20}
-            slidesPerView={1.2}
-            className="relative"
-            breakpoints={{
-              640: { slidesPerView: 2.2 },
-              1024: { slidesPerView: 3.2 },
-            }}
-          >
-            {topHotels.map((hotel) => (
-              <SwiperSlide key={hotel.id} className="pb-6">
-                <div className="group overflow-hidden rounded-xl border bg-white shadow hover:shadow-lg transition">
-                  {/* Image */}
-                  <div className="relative h-40 w-full overflow-hidden">
-                    <Image
-                      src={hotel.image}
-                      alt={hotel.name}
-                      fill
-                      className="object-cover group-hover:scale-110 transition"
-                      unoptimized
-                    />
-                  </div>
-                  {/* Info */}
-                  <div className="p-4">
-                    <h3 className="font-bold text-lg truncate">{hotel.name}</h3>
-                    <p className="text-sm text-gray-600">{hotel.city}</p>
-                    <div className="mt-3 flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <span className="text-yellow-500">⭐</span>
-                        <span className="font-semibold">{hotel.rating}</span>
-                        <span className="text-xs text-gray-500">({hotel.reviews})</span>
+          {loading ? (
+            <div className="flex h-60 items-center justify-center">
+              <p className="text-gray-500">Đang tải khách sạn...</p>
+            </div>
+          ) : hotels.length === 0 ? (
+            <div className="flex h-60 items-center justify-center">
+              <p className="text-gray-500">Chưa có khách sạn nào</p>
+            </div>
+          ) : (
+            <Swiper
+              modules={[Navigation]}
+              navigation
+              spaceBetween={20}
+              slidesPerView={1.2}
+              className="relative"
+              breakpoints={{
+                640: { slidesPerView: 2.2 },
+                1024: { slidesPerView: 3.2 },
+              }}
+            >
+              {hotels.map((hotel) => (
+                <SwiperSlide key={hotel.id} className="pb-6">
+                  <Link href={`/hotel/${hotel.id}`}>
+                    <div className="group overflow-hidden rounded-xl border bg-white shadow hover:shadow-lg transition">
+                      {/* Image */}
+                      <div className="relative h-40 w-full overflow-hidden bg-gray-200">
+                        {hotel.id ? (
+                          <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-100 to-cyan-100">
+                            <span className="text-4xl">🏨</span>
+                          </div>
+                        ) : null}
                       </div>
-                      <span className="font-bold text-sky-600">
-                        ₫{hotel.price.toLocaleString('vi-VN')}
-                      </span>
+                      {/* Info */}
+                      <div className="p-4">
+                        <h3 className="font-bold text-lg truncate">{hotel.name}</h3>
+                        <p className="text-sm text-gray-600">{hotel.city}</p>
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="flex items-center gap-1">
+                            <span className="text-yellow-500">⭐</span>
+                            <span className="font-semibold">{hotel.stars}/5</span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {hotel.rooms?.length || 0} phòng
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
+                  </Link>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          )}
         </div>
       </Container>
     </section>

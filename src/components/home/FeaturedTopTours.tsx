@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { tours } from '@/data/tours';
+import { apiFeaturedTours, type ApiTour } from '@/lib/api-tours';
+import { Tour } from '@/data/tours';
 import TopFamousTourCard from '../Card/topFamousCard/TopFamousTourCard';
 
 // Swiper
@@ -14,7 +15,27 @@ type SortKey = 'rating' | 'price' | 'reviews';
 type TimeRange = 'any' | '2d' | '3d' | '4d+';
 type PriceOrder = 'any' | 'asc' | 'desc';
 
+// Convert ApiTour to Tour
+function apiTourToTour(apiTour: ApiTour): Tour {
+  return {
+    id: apiTour.id,
+    title: apiTour.title,
+    destination: apiTour.destination,
+    description: apiTour.description,
+    price: apiTour.price,
+    duration: apiTour.duration,
+    imageUrl: apiTour.imageUrl || '/images/tour-placeholder.jpg',
+    rating: apiTour.rating || 0,
+    reviews: apiTour.reviews || 0,
+    highlights: apiTour.highlights || [],
+    included: apiTour.included || [],
+    itinerary: apiTour.itinerary || [],
+  };
+}
+
 export default function FeaturedTopTours() {
+  const [tours, setTours] = useState<ApiTour[]>([]);
+  const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('any');
   const [sortBy, setSortBy] = useState<SortKey>('rating');
   const [priceOrder, setPriceOrder] = useState<PriceOrder>('any');
@@ -23,6 +44,22 @@ export default function FeaturedTopTours() {
   const timeRef = useRef<HTMLDetailsElement>(null);
   const sortRef = useRef<HTMLDetailsElement>(null);
   const priceRef = useRef<HTMLDetailsElement>(null);
+
+  // Load tours from API
+  useEffect(() => {
+    async function loadTours() {
+      try {
+        const data = await apiFeaturedTours(12);
+        setTours(data);
+      } catch (error) {
+        console.error('Failed to load featured tours:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTours();
+  }, []);
 
   // đóng tất cả dropdown
   const closeAll = () => {
@@ -51,15 +88,15 @@ export default function FeaturedTopTours() {
     };
   }, []);
 
-  // gắn status như mock
+  // gắn status dựa trên index
   const withStatus = useMemo(() => {
-    const base = tours.slice(0, 12);
-    return base.map((t, i) => {
-      if (i % 3 === 0) return { tour: t, status: { type: 'top-rated' } as const };
-      if (i % 3 === 1) return { tour: t, status: { type: 'best-sale' } as const };
-      return { tour: t, status: { type: 'discount', percent: 25 } as const };
+    return tours.map((t, i) => {
+      const tour = apiTourToTour(t);
+      if (i % 3 === 0) return { tour, status: { type: 'top-rated' } as const };
+      if (i % 3 === 1) return { tour, status: { type: 'best-sale' } as const };
+      return { tour, status: { type: 'discount', percent: 15 } as const };
     });
-  }, []);
+  }, [tours]);
 
   // lọc + sắp xếp
   const filtered = useMemo(() => {
@@ -67,7 +104,8 @@ export default function FeaturedTopTours() {
 
     if (timeRange !== 'any') {
       arr = arr.filter(({ tour }) => {
-        const days = parseInt(tour.duration.split(' ')[0] ?? '0', 10);
+        const durationStr = tour.duration?.toLowerCase() || '';
+        const days = parseInt(durationStr.split(' ')[0] ?? '0', 10);
         if (timeRange === '2d') return days <= 2;
         if (timeRange === '3d') return days === 3;
         return days >= 4;
@@ -76,15 +114,20 @@ export default function FeaturedTopTours() {
 
     arr.sort((a, b) => {
       if (sortBy === 'rating') {
-        return b.tour.rating - a.tour.rating || b.tour.reviews - a.tour.reviews;
+        return (
+          (b.tour.rating || 0) - (a.tour.rating || 0) ||
+          (b.tour.reviews || 0) - (a.tour.reviews || 0)
+        );
       }
-      if (sortBy === 'reviews') return b.tour.reviews - a.tour.reviews;
-      return b.tour.price - a.tour.price;
+      if (sortBy === 'reviews') return (b.tour.reviews || 0) - (a.tour.reviews || 0);
+      return (b.tour.price || 0) - (a.tour.price || 0);
     });
 
     if (priceOrder !== 'any') {
       arr.sort((a, b) =>
-        priceOrder === 'asc' ? a.tour.price - b.tour.price : b.tour.price - a.tour.price
+        priceOrder === 'asc'
+          ? (a.tour.price || 0) - (b.tour.price || 0)
+          : (b.tour.price || 0) - (a.tour.price || 0)
       );
     }
     return arr;
@@ -203,24 +246,34 @@ export default function FeaturedTopTours() {
         </div>
 
         {/* Swiper slider */}
-        <div className="mt-8 ftt-swiper">
-          <Swiper
-            modules={[Navigation]}
-            navigation
-            spaceBetween={24}
-            slidesPerView={1.05}
-            breakpoints={{
-              640: { slidesPerView: 2.05, spaceBetween: 24 },
-              1024: { slidesPerView: 3.05, spaceBetween: 28 },
-            }}
-          >
-            {filtered.map(({ tour, status }) => (
-              <SwiperSlide key={tour.id} className="pb-6">
-                <TopFamousTourCard tour={tour} status={status} />
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </div>
+        {loading ? (
+          <div className="mt-8 flex h-80 items-center justify-center">
+            <p className="text-gray-500">Đang tải tours...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="mt-8 flex h-80 items-center justify-center">
+            <p className="text-gray-500">Chưa có tours nào</p>
+          </div>
+        ) : (
+          <div className="mt-8 ftt-swiper">
+            <Swiper
+              modules={[Navigation]}
+              navigation
+              spaceBetween={24}
+              slidesPerView={1.05}
+              breakpoints={{
+                640: { slidesPerView: 2.05, spaceBetween: 24 },
+                1024: { slidesPerView: 3.05, spaceBetween: 28 },
+              }}
+            >
+              {filtered.map(({ tour, status }) => (
+                <SwiperSlide key={tour.id} className="pb-6">
+                  <TopFamousTourCard tour={tour} status={status} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+        )}
       </div>
     </section>
   );
