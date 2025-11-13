@@ -25,6 +25,9 @@ export type ApiTransportTrip = {
   dateCreated: string;
   modifiedDate: string | null;
   transport?: ApiTransport | null;
+  // New fields from actual API response
+  transportName?: string;
+  transportType?: string;
 };
 
 function buildHeaders(withJson = true): Headers {

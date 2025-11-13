@@ -111,31 +111,33 @@ export default function GoogleLoginButton() {
 
   return (
     <div className="flex justify-center w-full">
-      <GoogleLogin
-        onSuccess={(credentialResponse) => {
-          console.log('[GoogleLoginButton] GoogleLogin onSuccess called');
-          console.log(
-            '[GoogleLoginButton] Credential response keys:',
-            Object.keys(credentialResponse)
-          );
+      <div className="w-full max-w-sm">
+        <GoogleLogin
+          onSuccess={(credentialResponse) => {
+            console.log('[GoogleLoginButton] GoogleLogin onSuccess called');
+            console.log(
+              '[GoogleLoginButton] Credential response keys:',
+              Object.keys(credentialResponse)
+            );
 
-          const idToken = credentialResponse?.credential;
-          if (!idToken) {
-            console.error('[GoogleLoginButton] No credential (id_token) in response');
-            showError('Không nhận được token từ Google');
-            return;
-          }
+            const idToken = credentialResponse?.credential;
+            if (!idToken) {
+              console.error('[GoogleLoginButton] No credential (id_token) in response');
+              showError('Không nhận được token từ Google');
+              return;
+            }
 
-          console.log('[GoogleLoginButton] Got credential, calling handleGoogleSuccess');
-          handleGoogleSuccess(idToken);
-        }}
-        onError={() => {
-          console.error('[GoogleLoginButton] Google Login onError called');
-          showError('Đăng nhập Google thất bại. Vui lòng thử lại.');
-        }}
-        text="signin"
-        width="300"
-      />
+            console.log('[GoogleLoginButton] Got credential, calling handleGoogleSuccess');
+            handleGoogleSuccess(idToken);
+          }}
+          onError={() => {
+            console.error('[GoogleLoginButton] Google Login onError called');
+            showError('Đăng nhập Google thất bại. Vui lòng thử lại.');
+          }}
+          text="signin"
+          width="100%"
+        />
+      </div>
     </div>
   );
 }
