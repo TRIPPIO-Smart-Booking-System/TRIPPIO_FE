@@ -214,15 +214,28 @@ async function fetchReviewByOrder(orderId: number): Promise<Review | null> {
 
 async function createReview(input: { orderId: number; rating: number; comment: string }) {
   try {
+    console.log('[createReview] Attempting to create review for order:', input.orderId);
     const res = await apiCreateReview({
       orderId: input.orderId,
       rating: input.rating,
       comment: input.comment,
     });
+    console.log('[createReview] Response:', res);
     broadcastReviewsChanged();
     showSuccess('Đã tạo đánh giá thành công!');
     return res?.data || res;
   } catch (err) {
+    console.error('[createReview] Error:', err);
+    // Check if error is "already reviewed"
+    if (err instanceof Error && err.message.includes('already reviewed')) {
+      console.log('[createReview] Review already exists, fetching existing review...');
+      // Try to fetch the existing review
+      const existing = await fetchReviewByOrder(input.orderId);
+      if (existing) {
+        console.log('[createReview] Found existing review:', existing);
+        throw new Error(`Bạn đã đánh giá đơn hàng này rồi. (Rating: ${existing.rating}/5)`);
+      }
+    }
     const msg = err instanceof Error ? err.message : 'Lỗi tạo đánh giá';
     showError(`Lỗi: ${msg}`);
     throw err;
@@ -315,22 +328,31 @@ export default function OrdersPageVipPlus() {
   }
 
   async function prefetchReviews(orderIds: number[]) {
+    console.log('[Payment] prefetchReviews for orderIds:', orderIds);
     const map: Record<string, Review | null> = {};
     await Promise.all(
       orderIds.map(async (oid) => {
         try {
-          map[String(oid)] = await fetchReviewByOrder(oid);
-        } catch {
+          const review = await fetchReviewByOrder(oid);
+          console.log(`[Payment] Review for order ${oid}:`, review);
+          map[String(oid)] = review;
+        } catch (err) {
+          console.error(`[Payment] Error fetching review for order ${oid}:`, err);
           map[String(oid)] = null;
         }
       })
     );
+    console.log('[Payment] All reviews fetched:', map);
     setReviewsByOrder((prev) => ({ ...prev, ...map }));
   }
 
   async function syncReviewsForCurrentOrders() {
+    console.log('[Payment] Syncing reviews for current orders');
     const ids = rowsRef.current.map((r) => r.orderId);
-    if (ids.length) await prefetchReviews(ids);
+    if (ids.length) {
+      console.log('[Payment] Fetching reviews for order IDs:', ids);
+      await prefetchReviews(ids);
+    }
   }
 
   async function load() {
@@ -436,13 +458,39 @@ export default function OrdersPageVipPlus() {
     try {
       if (reviewModal.mode === 'create') {
         console.log('[Payment] Creating review for order:', reviewModal.orderId);
-        const created = await createReview({
-          orderId: reviewModal.orderId,
-          rating: reviewModal.rating,
-          comment: reviewModal.comment.trim(),
-        });
-        console.log('[Payment] Review created:', created);
-        setReviewsByOrder((m) => ({ ...m, [String(created.orderId)]: created }));
+        try {
+          const created = await createReview({
+            orderId: reviewModal.orderId,
+            rating: reviewModal.rating,
+            comment: reviewModal.comment.trim(),
+          });
+          console.log('[Payment] Review created:', created);
+          setReviewsByOrder((m) => ({ ...m, [String(created.orderId)]: created }));
+          setReviewModal(null);
+        } catch (createErr) {
+          // If error is "already reviewed", try to fetch and switch to edit mode
+          if (createErr instanceof Error && createErr.message.includes('already reviewed')) {
+            console.log('[Payment] Detected existing review, fetching...');
+            const existing = await fetchReviewByOrder(reviewModal.orderId);
+            if (existing) {
+              console.log('[Payment] Switching to edit mode with existing review:', existing);
+              setReviewsByOrder((m) => ({
+                ...m,
+                [String(reviewModal.orderId)]: existing,
+              }));
+              push('Thông báo', 'Bạn đã có đánh giá rồi. Chế độ sửa đang được kích hoạt.');
+              // Switch to edit mode
+              setReviewModal({
+                mode: 'edit',
+                orderId: existing.orderId,
+                reviewId: existing.id,
+                rating: existing.rating,
+                comment: existing.comment ?? '',
+              });
+            }
+          }
+          return;
+        }
       } else {
         if (!reviewModal.reviewId) return;
         console.log('[Payment] Updating review:', reviewModal.reviewId);
@@ -452,8 +500,8 @@ export default function OrdersPageVipPlus() {
         });
         console.log('[Payment] Review updated:', updated);
         setReviewsByOrder((m) => ({ ...m, [String(updated.orderId)]: updated }));
+        setReviewModal(null);
       }
-      setReviewModal(null);
       // Refresh the page to show latest data
       console.log('[Payment] Reloading orders to get latest reviews');
       await syncReviewsForCurrentOrders();
