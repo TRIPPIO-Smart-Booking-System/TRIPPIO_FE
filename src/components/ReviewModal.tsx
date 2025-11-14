@@ -53,17 +53,29 @@ export default function ReviewModal({
     setSuccess(false);
 
     try {
-      const token = getToken();
-      console.log('[ReviewModal] Token from localStorage:', token ? '✓ Found' : '✗ Not found');
+      // Try getAuth() first (recommended), then fallback to localStorage
+      const authFromStorage = getAuth();
+      const token = authFromStorage.accessToken || getToken();
+
+      console.log(
+        '[ReviewModal.submit] Auth source:',
+        authFromStorage.accessToken ? 'getAuth()' : 'getToken()'
+      );
+      console.log('[ReviewModal.submit] Token available:', token ? '✓ Yes' : '✗ No');
+
+      if (!token) {
+        console.warn('[ReviewModal.submit] ⚠️ No token found at all');
+      }
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-        console.log('[ReviewModal] Authorization header:', `Bearer ${token.substring(0, 20)}...`);
-      } else {
-        console.warn('[ReviewModal] ⚠️ No token found in localStorage');
+        console.log(
+          '[ReviewModal.submit] Authorization header set:',
+          `Bearer ${token.substring(0, 20)}...`
+        );
       }
 
       const requestBody = {
@@ -71,8 +83,8 @@ export default function ReviewModal({
         rating,
         comment: comment.trim() || undefined,
       };
-      console.log('[ReviewModal] Request body:', requestBody);
-      console.log('[ReviewModal] API endpoint:', `${API_BASE}/api/review`);
+      console.log('[ReviewModal.submit] Request body:', requestBody);
+      console.log('[ReviewModal.submit] API endpoint:', `${API_BASE}/api/review`);
 
       const response = await fetch(`${API_BASE}/api/review`, {
         method: 'POST',
@@ -83,7 +95,7 @@ export default function ReviewModal({
 
       if (!response.ok) {
         const msg = await response.text().catch(() => 'Lỗi không xác định');
-        console.error('[ReviewModal] HTTP Error:', {
+        console.error('[ReviewModal.submit] HTTP Error:', {
           status: response.status,
           statusText: response.statusText,
           message: msg,
@@ -93,7 +105,7 @@ export default function ReviewModal({
       }
 
       const data = await response.json();
-      console.log('[ReviewModal] Success response:', data);
+      console.log('[ReviewModal.submit] Success response:', data);
       setSuccess(true);
       setRating(5);
       setComment('');
@@ -108,7 +120,6 @@ export default function ReviewModal({
       setSaving(false);
     }
   };
-
   const handleClose = () => {
     if (!saving) {
       setRating(5);
