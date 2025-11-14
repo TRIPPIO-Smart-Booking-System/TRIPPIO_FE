@@ -435,22 +435,30 @@ export default function OrdersPageVipPlus() {
     setSubmitting(true);
     try {
       if (reviewModal.mode === 'create') {
+        console.log('[Payment] Creating review for order:', reviewModal.orderId);
         const created = await createReview({
           orderId: reviewModal.orderId,
           rating: reviewModal.rating,
           comment: reviewModal.comment.trim(),
         });
+        console.log('[Payment] Review created:', created);
         setReviewsByOrder((m) => ({ ...m, [String(created.orderId)]: created }));
       } else {
         if (!reviewModal.reviewId) return;
+        console.log('[Payment] Updating review:', reviewModal.reviewId);
         const updated = await updateReview(reviewModal.reviewId, {
           rating: reviewModal.rating,
           comment: reviewModal.comment.trim(),
         });
+        console.log('[Payment] Review updated:', updated);
         setReviewsByOrder((m) => ({ ...m, [String(updated.orderId)]: updated }));
       }
       setReviewModal(null);
+      // Refresh the page to show latest data
+      console.log('[Payment] Reloading orders to get latest reviews');
+      await syncReviewsForCurrentOrders();
     } catch (e: unknown) {
+      console.error('[Payment] Error submitting review:', e);
       push('Lỗi', errMsg(e));
     } finally {
       setSubmitting(false);
@@ -462,10 +470,15 @@ export default function OrdersPageVipPlus() {
     if (!rv) return;
     if (!confirm('Xoá đánh giá này?')) return;
     try {
+      console.log('[Payment] Deleting review:', rv.id);
       await deleteReview(rv.id);
       setReviewsByOrder((m) => ({ ...m, [String(orderId)]: null }));
       push('Đã xoá đánh giá', `Order #${orderId}`);
+      // Refresh the page to show latest data
+      console.log('[Payment] Reloading orders after delete');
+      await syncReviewsForCurrentOrders();
     } catch (e: unknown) {
+      console.error('[Payment] Error deleting review:', e);
       push('Lỗi', errMsg(e));
     }
   }
@@ -772,62 +785,71 @@ export default function OrdersPageVipPlus() {
       )}
 
       {/* REVIEW MODAL */}
-      {reviewModal && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
-          >
-            <div className="bg-gradient-to-r from-sky-50 to-indigo-50 px-5 py-4">
-              <div className="text-lg font-semibold text-slate-800">
-                {reviewModal.mode === 'create' ? 'Đánh giá đơn hàng' : 'Sửa đánh giá'}
-              </div>
-              <div className="mt-1 text-[12px] text-slate-500">
-                Order ID: <span className="font-mono">{reviewModal.orderId}</span>
-              </div>
-            </div>
-            <div className="px-5 py-4">
-              <div className="mb-4">
-                <div className="mb-1 text-sm font-medium">Điểm đánh giá</div>
-                <StarPicker
-                  value={reviewModal.rating}
-                  onChange={(v) => setReviewModal((m) => (m ? { ...m, rating: v } : m))}
-                />
-              </div>
-              <div className="mb-2">
-                <div className="mb-1 text-sm font-medium">Nhận xét</div>
-                <textarea
-                  rows={4}
-                  value={reviewModal.comment}
-                  onChange={(e) =>
-                    setReviewModal((m) => (m ? { ...m, comment: e.target.value } : m))
-                  }
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
-                  placeholder="Cảm nhận của bạn…"
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 px-5 pb-5">
-              <button
-                onClick={() => setReviewModal(null)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50"
-                disabled={submitting}
+      {reviewModal &&
+        (() => {
+          const order = rowsRef.current.find((r) => r.orderId === reviewModal.orderId);
+          return (
+            <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
               >
-                Huỷ
-              </button>
-              <button
-                onClick={handleSubmitReview}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-700"
-              >
-                {submitting && <Loader2 className="h-4 w-4 animate-spin" />} Lưu
-              </button>
+                <div className="bg-gradient-to-r from-sky-50 to-indigo-50 px-5 py-4">
+                  <div className="text-lg font-semibold text-slate-800">
+                    {reviewModal.mode === 'create' ? 'Đánh giá đơn hàng' : 'Sửa đánh giá'}
+                  </div>
+                  <div className="mt-1 text-[12px] text-slate-500">
+                    Order ID: <span className="font-mono">{reviewModal.orderId}</span>
+                  </div>
+                  {order && (
+                    <div className="mt-2 text-xs text-slate-600">
+                      <div className="truncate">{order.itemsText}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="px-5 py-4">
+                  <div className="mb-4">
+                    <div className="mb-1 text-sm font-medium">Điểm đánh giá</div>
+                    <StarPicker
+                      value={reviewModal.rating}
+                      onChange={(v) => setReviewModal((m) => (m ? { ...m, rating: v } : m))}
+                    />
+                  </div>
+                  <div className="mb-2">
+                    <div className="mb-1 text-sm font-medium">Nhận xét</div>
+                    <textarea
+                      rows={4}
+                      value={reviewModal.comment}
+                      onChange={(e) =>
+                        setReviewModal((m) => (m ? { ...m, comment: e.target.value } : m))
+                      }
+                      className="w-full rounded-2xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                      placeholder="Cảm nhận của bạn…"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 px-5 pb-5">
+                  <button
+                    onClick={() => setReviewModal(null)}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50"
+                    disabled={submitting}
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    onClick={handleSubmitReview}
+                    disabled={submitting}
+                    className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-700"
+                  >
+                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />} Lưu
+                  </button>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
-        </div>
-      )}
+          );
+        })()}
     </div>
   );
 }
