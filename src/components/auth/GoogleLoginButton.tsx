@@ -85,10 +85,6 @@ export default function GoogleLoginButton() {
 
         showSuccess('Đăng nhập Google thành công!');
 
-        // Dispatch auth:changed event for layout to detect login
-        window.dispatchEvent(new Event(AUTH_EVENT_NAME));
-        console.log('[GoogleLoginButton] ✅ Dispatched', AUTH_EVENT_NAME, 'event');
-
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
         let target = '/homepage';
         if (Array.isArray(rolesArray)) {
@@ -98,15 +94,17 @@ export default function GoogleLoginButton() {
         }
 
         console.log('[GoogleLoginButton] 🔄 Redirecting to:', target);
-        router.replace(redirectParam || target);
-        router.refresh();
+        // Use a small delay before redirect to ensure auth state is saved
+        setTimeout(() => {
+          router.push(redirectParam || target);
+        }, 100);
       } else if (data?.isSuccess) {
         console.log('[GoogleLoginButton] ⚠️ isSuccess but no accessToken');
         showSuccess('Đăng nhập Google thành công!');
-        window.dispatchEvent(new Event(AUTH_EVENT_NAME));
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-        router.replace(redirectParam || '/homepage');
-        router.refresh();
+        setTimeout(() => {
+          router.push(redirectParam || '/homepage');
+        }, 100);
       } else {
         console.error('[GoogleLoginButton] ❌ No accessToken and isSuccess is false');
         showError('Không thể hoàn thành đăng nhập');
