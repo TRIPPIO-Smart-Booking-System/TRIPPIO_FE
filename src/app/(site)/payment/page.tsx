@@ -223,7 +223,12 @@ async function createReview(input: { orderId: number; rating: number; comment: s
     console.log('[createReview] Response:', res);
     broadcastReviewsChanged();
     showSuccess('Đã tạo đánh giá thành công!');
-    return res?.data || res;
+    // Ensure orderId is set from input if not in response
+    const reviewData = res?.data || res;
+    if (reviewData && !reviewData.orderId) {
+      reviewData.orderId = input.orderId;
+    }
+    return reviewData;
   } catch (err) {
     console.error('[createReview] Error:', err);
     // Check if error is "already reviewed"
@@ -243,10 +248,12 @@ async function createReview(input: { orderId: number; rating: number; comment: s
 }
 async function updateReview(id: string, input: { rating: number; comment: string }) {
   try {
+    console.log('[updateReview] Attempting to update review:', id);
     const res = await apiUpdateReview(Number(id), {
       rating: input.rating,
       comment: input.comment,
     });
+    console.log('[updateReview] Response:', res);
     broadcastReviewsChanged();
     showSuccess('Đã cập nhật đánh giá thành công!');
     return res?.data || res;
@@ -258,7 +265,9 @@ async function updateReview(id: string, input: { rating: number; comment: string
 }
 async function deleteReview(id: string) {
   try {
+    console.log('[deleteReview] Attempting to delete review:', id);
     await apiDeleteReview(Number(id));
+    console.log('[deleteReview] Review deleted successfully');
     broadcastReviewsChanged();
     showSuccess('Đã xoá đánh giá thành công!');
     return true;
