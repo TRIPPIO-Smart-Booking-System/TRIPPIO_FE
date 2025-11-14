@@ -17,6 +17,18 @@ type JwtPayload = {
 /* ---------- Helpers ---------- */
 function hasToken(): boolean {
   try {
+    // Check the new trip_auth key (from setAuth)
+    const tripAuth = localStorage.getItem('trip_auth');
+    if (tripAuth) {
+      try {
+        const parsed = JSON.parse(tripAuth);
+        return !!parsed.accessToken;
+      } catch {
+        return false;
+      }
+    }
+
+    // Fallback to old keys for backward compatibility
     const keys = ['accessToken', 'authToken', 'userId', 'trippio_token'];
     return keys.some((k) => {
       const v = localStorage.getItem(k);
@@ -48,6 +60,20 @@ function normalizeRoles(rs: unknown): string[] {
 
 function getRolesFromLocal(): string[] {
   try {
+    // Check trip_auth first (new format from setAuth)
+    const tripAuth = localStorage.getItem('trip_auth');
+    if (tripAuth) {
+      try {
+        const parsed = JSON.parse(tripAuth);
+        if (parsed.roles) {
+          return normalizeRoles(parsed.roles);
+        }
+      } catch {
+        // Fallback if parsing fails
+      }
+    }
+
+    // Fallback to old method
     const raw = localStorage.getItem('roles');
     if (raw) return normalizeRoles(JSON.parse(raw));
     const tok =
@@ -95,7 +121,11 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     // Only run on client after mount to avoid hydration mismatch
     setTokenExists(hasToken());
     setReady(true);
-    const onAuth = () => location.reload();
+
+    // When auth state changes, re-check token without full reload
+    const onAuth = () => {
+      setTokenExists(hasToken());
+    };
     window.addEventListener('auth:changed', onAuth as EventListener);
     return () => window.removeEventListener('auth:changed', onAuth as EventListener);
   }, []);
