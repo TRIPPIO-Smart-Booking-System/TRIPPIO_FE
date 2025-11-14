@@ -1390,26 +1390,34 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Created Date & Time - 3 cols */}
+                      {/* Created Date & Time - 3 cols, side by side */}
                       <div className="col-span-12 sm:col-span-3 pb-4 sm:pb-0 sm:pl-4">
-                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                          Ngày Tạo
-                        </div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          {row.createdAt
-                            ? new Date(row.createdAt).toLocaleDateString('vi-VN')
-                            : '—'}
-                        </div>
-                        <div className="mt-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                          Giờ
-                        </div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          {row.createdAt
-                            ? new Date(row.createdAt).toLocaleTimeString('vi-VN', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : '—'}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Date */}
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Ngày Tạo
+                            </div>
+                            <div className="mt-1 text-sm text-slate-600">
+                              {row.createdAt
+                                ? new Date(row.createdAt).toLocaleDateString('vi-VN')
+                                : '—'}
+                            </div>
+                          </div>
+                          {/* Time */}
+                          <div>
+                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Giờ
+                            </div>
+                            <div className="mt-1 text-sm text-slate-600">
+                              {row.createdAt
+                                ? new Date(row.createdAt).toLocaleTimeString('vi-VN', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : '—'}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
