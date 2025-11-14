@@ -85,6 +85,42 @@ export default function GoogleLoginButton() {
 
         showSuccess('Đăng nhập Google thành công!');
 
+        // Fetch full user profile to populate trip_user_map cache
+        console.log('[GoogleLoginButton] 📥 Fetching full user profile...');
+        try {
+          const meUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://trippiowebapp.azurewebsites.net'}/api/user/me`;
+          const meResponse = await fetch(meUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${data.accessToken}`,
+            },
+          });
+
+          if (meResponse.ok) {
+            const userProfile = await meResponse.json();
+            console.log('[GoogleLoginButton] ✅ Got full user profile:', userProfile);
+
+            // Cache user profile in trip_user_map
+            try {
+              const userMapKey = 'trip_user_map';
+              const existingMap = JSON.parse(localStorage.getItem(userMapKey) || '{}');
+              existingMap[data.user?.id] = userProfile;
+              localStorage.setItem(userMapKey, JSON.stringify(existingMap));
+              console.log('[GoogleLoginButton] ✅ Cached user profile in trip_user_map');
+            } catch (e) {
+              console.error('[GoogleLoginButton] ❌ Failed to cache user profile:', e);
+            }
+          } else {
+            console.warn(
+              '[GoogleLoginButton] ⚠️ Failed to fetch full user profile:',
+              meResponse.status
+            );
+          }
+        } catch (e) {
+          console.error('[GoogleLoginButton] ❌ Error fetching user profile:', e);
+        }
+
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
         let target = '/homepage';
         if (Array.isArray(rolesArray)) {

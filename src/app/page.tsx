@@ -7,5 +7,5 @@ export default async function Home() {
   const token = jar.get('trippio_session')?.value;
 
   if (token) redirect('/homepage'); // đã đăng nhập
-  redirect('/homepage'); // chưa đăng nhập
+  redirect('/login');
 }
