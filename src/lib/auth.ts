@@ -71,7 +71,22 @@ export function setAuth(next: AuthState): void {
     if (merged.userPhone) s.setItem(LS_USER_PHONE, String(merged.userPhone));
   } catch {}
 
+  // Save to trip_auth (internal format)
   s.setItem(AUTH_KEY, JSON.stringify(merged));
+
+  // Also save individual keys like normal login for compatibility
+  try {
+    if (merged.accessToken) s.setItem('accessToken', merged.accessToken);
+    if (merged.refreshToken) s.setItem('refreshToken', merged.refreshToken);
+    if (merged.userId) s.setItem('userId', merged.userId);
+    if (merged.email) s.setItem('userEmail', merged.email);
+    if (merged.userName) s.setItem('userName', merged.userName);
+    if (merged.roles && Array.isArray(merged.roles))
+      s.setItem('roles', JSON.stringify(merged.roles));
+    // authToken = accessToken for compatibility
+    if (merged.accessToken) s.setItem('authToken', merged.accessToken);
+  } catch {}
+
   if (hasWindow) window.dispatchEvent(new Event(AUTH_EVENT_NAME));
 }
 

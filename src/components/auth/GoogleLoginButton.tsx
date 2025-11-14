@@ -59,29 +59,28 @@ export default function GoogleLoginButton() {
         return;
       }
 
-      // Nếu BE trả về accessToken, lưu vào auth state
-      if (data?.accessToken) {
-        console.log('[GoogleLoginButton] ✅ Found accessToken, calling setAuth()...');
+      // Nếu BE trả về accessToken, lưu vào auth state - flatten user data
+      if (data?.accessToken && data.user) {
+        console.log('[GoogleLoginButton] ✅ Found accessToken, flattening user data...');
 
-        const rolesArray = Array.isArray(data.user?.roles)
-          ? data.user.roles
-          : [data.user?.roles].filter(Boolean);
+        const userData = data.user;
+        const rolesArray = Array.isArray(userData.roles)
+          ? userData.roles
+          : [userData.roles].filter(Boolean);
 
-        // ✅ Gọi setAuth() thay vì lưu trực tiếp vào localStorage
-        setAuth({
+        // ✅ Flatten to match regular login format
+        const flatAuthState = {
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
-          userId: data.user?.id,
-          email: data.user?.email,
-          userName: data.user?.userName || data.user?.email,
+          userId: userData.id,
+          email: userData.email,
+          userName: userData.userName || userData.email,
           roles: rolesArray,
-        });
+        };
 
-        console.log('[GoogleLoginButton] ✅ setAuth() called with:', {
-          userId: data.user?.id,
-          email: data.user?.email,
-          roles: rolesArray,
-        });
+        setAuth(flatAuthState);
+
+        console.log('[GoogleLoginButton] ✅ setAuth() called with flattened data:', flatAuthState);
 
         showSuccess('Đăng nhập Google thành công!');
 
@@ -105,7 +104,7 @@ export default function GoogleLoginButton() {
             try {
               const userMapKey = 'trip_user_map';
               const existingMap = JSON.parse(localStorage.getItem(userMapKey) || '{}');
-              existingMap[data.user?.id] = userProfile;
+              existingMap[userData.id] = userProfile;
               localStorage.setItem(userMapKey, JSON.stringify(existingMap));
               console.log('[GoogleLoginButton] ✅ Cached user profile in trip_user_map');
             } catch (e) {
@@ -123,24 +122,23 @@ export default function GoogleLoginButton() {
 
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
         let target = '/homepage';
-        if (Array.isArray(rolesArray)) {
-          const rolesStr = rolesArray.map((r) => String(r).toLowerCase());
-          if (rolesStr.includes('admin')) target = '/admin';
-          else if (rolesStr.includes('staff')) target = '/staff';
-        }
+        const rolesStr = rolesArray.map((r: any) => String(r).toLowerCase());
+        if (rolesStr.includes('admin')) target = '/admin';
+        else if (rolesStr.includes('staff')) target = '/staff';
 
-        console.log('[GoogleLoginButton] 🔄 Redirecting to:', target);
-        // Use a small delay before redirect to ensure auth state is saved
+        console.log('[GoogleLoginButton] 🔄 Redirecting to:', redirectParam || target);
+
+        // Use router.push with delay to ensure auth state persists
         setTimeout(() => {
           router.push(redirectParam || target);
         }, 100);
       } else if (data?.isSuccess) {
         console.log('[GoogleLoginButton] ⚠️ isSuccess but no accessToken');
         showSuccess('Đăng nhập Google thành công!');
+        window.dispatchEvent(new Event(AUTH_EVENT_NAME));
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-        setTimeout(() => {
-          router.push(redirectParam || '/homepage');
-        }, 100);
+        router.replace(redirectParam || '/homepage');
+        router.refresh();
       } else {
         console.error('[GoogleLoginButton] ❌ No accessToken and isSuccess is false');
         showError('Không thể hoàn thành đăng nhập');
