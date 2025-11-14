@@ -66,7 +66,7 @@ type Row = {
 };
 
 type Review = {
-  id: string;
+  id: number; // Backend returns int, not string
   orderId: number;
   rating: number; // 1..5
   comment?: string;
@@ -148,53 +148,7 @@ function pillIcon(status: UiStatus) {
   }
 }
 
-/* ====== Local review (fake) + broadcast ====== */
-function loadReviewsMap(): Record<string, Review> {
-  try {
-    const raw = localStorage.getItem(LS_REVIEWS);
-    if (!raw) return {};
-    const obj = JSON.parse(raw) as Record<string, Review>;
-    return obj && typeof obj === 'object' ? obj : {};
-  } catch {
-    return {};
-  }
-}
-function saveReviewsMap(map: Record<string, Review>) {
-  localStorage.setItem(LS_REVIEWS, JSON.stringify(map));
-}
-function getLocalReviewByOrder(orderId: number): Review | null {
-  const map = loadReviewsMap();
-  return map[String(orderId)] ?? null;
-}
-function createLocalReview(input: { orderId: number; rating: number; comment: string }): Review {
-  const map = loadReviewsMap();
-  const rv: Review = {
-    id: Math.random().toString(36).slice(2),
-    orderId: input.orderId,
-    rating: input.rating,
-    comment: input.comment,
-  };
-  map[String(input.orderId)] = rv; // 1 order = 1 review
-  saveReviewsMap(map);
-  return rv;
-}
-function updateLocalReview(id: string, input: { rating: number; comment: string }): Review {
-  const map = loadReviewsMap();
-  const key = Object.keys(map).find((k) => map[k]?.id === id);
-  if (!key) throw new Error('Không tìm thấy review');
-  const old = map[key]!;
-  const rv: Review = { ...old, rating: input.rating, comment: input.comment };
-  map[key] = rv;
-  saveReviewsMap(map);
-  return rv;
-}
-function deleteLocalReview(id: string) {
-  const map = loadReviewsMap();
-  const key = Object.keys(map).find((k) => map[k]?.id === id);
-  if (!key) throw new Error('Không tìm thấy review');
-  delete map[key];
-  saveReviewsMap(map);
-}
+/* ====== Broadcast review changes ====== */
 function broadcastReviewsChanged() {
   try {
     window.dispatchEvent(new CustomEvent(EVT_REVIEWS_CHANGED));
@@ -246,10 +200,10 @@ async function createReview(input: { orderId: number; rating: number; comment: s
     throw err;
   }
 }
-async function updateReview(id: string, input: { rating: number; comment: string }) {
+async function updateReview(id: number, input: { rating: number; comment: string }) {
   try {
     console.log('[updateReview] Attempting to update review:', id);
-    const res = await apiUpdateReview(Number(id), {
+    const res = await apiUpdateReview(id, {
       rating: input.rating,
       comment: input.comment,
     });
@@ -263,10 +217,10 @@ async function updateReview(id: string, input: { rating: number; comment: string
     throw err;
   }
 }
-async function deleteReview(id: string) {
+async function deleteReview(id: number) {
   try {
     console.log('[deleteReview] Attempting to delete review:', id);
-    await apiDeleteReview(Number(id));
+    await apiDeleteReview(id);
     console.log('[deleteReview] Review deleted successfully');
     broadcastReviewsChanged();
     showSuccess('Đã xoá đánh giá thành công!');
@@ -301,7 +255,7 @@ export default function OrdersPageVipPlus() {
   const [reviewModal, setReviewModal] = useState<{
     mode: 'create' | 'edit';
     orderId: number;
-    reviewId?: string;
+    reviewId?: number;
     rating: number;
     comment: string;
   } | null>(null);
