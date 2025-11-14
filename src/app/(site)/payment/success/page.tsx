@@ -516,6 +516,25 @@ export default function PaymentSuccessPage() {
               <Home className="h-5 w-5" />
               Về trang chủ
             </Link>
+
+            {/* Nếu PAID + có orderCode -> link tới trang chi tiết đơn */}
+            {status === 'PAID' && orderCode ? (
+              <Link
+                href={`/my-orders/${orderCode}`}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-3 font-semibold text-sky-700 shadow-sm transition hover:bg-sky-100"
+              >
+                <Receipt className="h-5 w-5" />
+                Xem đơn của tôi
+              </Link>
+            ) : (
+              <Link
+                href="/orders"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+              >
+                <Receipt className="h-5 w-5" />
+                Xem tất cả đơn
+              </Link>
+            )}
           </div>
         </div>
 

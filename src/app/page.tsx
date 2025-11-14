@@ -6,6 +6,7 @@ export default async function Home() {
   const jar = await cookies(); // ✅ có await
   const token = jar.get('trippio_session')?.value;
 
-  if (token) redirect('/homepage'); // đã đăng nhập
-  redirect('/login');
+  if (token)
+    redirect('/homepage'); // đã đăng nhập
+  else redirect('/login');
 }

@@ -11,20 +11,43 @@ export type CreateReviewReq = {
 
 export async function apiCreateReview(body: CreateReviewReq) {
   const { accessToken } = getAuth();
+  console.log(
+    '[apiCreateReview] accessToken from getAuth():',
+    accessToken ? '✓ Found' : '✗ Not found'
+  );
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
+
+  console.log('[apiCreateReview] Headers:', {
+    ...headers,
+    Authorization: headers['Authorization']
+      ? `Bearer ${headers['Authorization'].substring(7, 27)}...`
+      : 'None',
+  });
+  console.log('[apiCreateReview] Request body:', body);
+
   const r = await fetch(`${API_BASE}/api/review`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
+    headers,
     body: JSON.stringify(body),
     credentials: 'include',
   });
+
   if (!r.ok) {
     const msg = await r.text().catch(() => '');
+    console.error('[apiCreateReview] HTTP Error:', {
+      status: r.status,
+      message: msg,
+    });
     throw new Error(`Review HTTP ${r.status} ${msg}`);
   }
-  return r.json();
+
+  const result = await r.json();
+  console.log('[apiCreateReview] Success:', result);
+  return result;
 }
 
 export async function apiUpdateReview(

@@ -54,30 +54,46 @@ export default function ReviewModal({
 
     try {
       const token = getToken();
+      console.log('[ReviewModal] Token from localStorage:', token ? '✓ Found' : '✗ Not found');
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+        console.log('[ReviewModal] Authorization header:', `Bearer ${token.substring(0, 20)}...`);
+      } else {
+        console.warn('[ReviewModal] ⚠️ No token found in localStorage');
       }
+
+      const requestBody = {
+        orderId: Number(orderId),
+        rating,
+        comment: comment.trim() || undefined,
+      };
+      console.log('[ReviewModal] Request body:', requestBody);
+      console.log('[ReviewModal] API endpoint:', `${API_BASE}/api/review`);
 
       const response = await fetch(`${API_BASE}/api/review`, {
         method: 'POST',
         headers,
         credentials: 'include',
-        body: JSON.stringify({
-          orderId: Number(orderId),
-          rating,
-          comment: comment.trim() || undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         const msg = await response.text().catch(() => 'Lỗi không xác định');
+        console.error('[ReviewModal] HTTP Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          message: msg,
+          headers: Array.from(response.headers.entries()),
+        });
         throw new Error(`HTTP ${response.status}: ${msg}`);
       }
 
       const data = await response.json();
+      console.log('[ReviewModal] Success response:', data);
       setSuccess(true);
       setRating(5);
       setComment('');
