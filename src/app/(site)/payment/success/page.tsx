@@ -4,8 +4,14 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Home, Receipt, Star } from 'lucide-react';
+import { Check, Home, Receipt, Star, Loader2 } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth';
+import {
+  apiCreateReview,
+  apiUpdateReview,
+  apiDeleteReview,
+  apiGetReviewsByOrderId,
+} from '@/lib/review.api';
 
 /* ================= Basics ================= */
 
@@ -58,62 +64,105 @@ type Review = {
   updatedAt: string; // ISO
 };
 
-function loadReviewsMap(): Record<string, Review> {
+/* ====== Fetch review từ Server API ====== */
+async function fetchReviewFromServer(orderId: number): Promise<Review | null> {
   try {
-    const raw = localStorage.getItem(LS_REVIEWS);
-    if (!raw) return {};
-    const obj = JSON.parse(raw) as Record<string, Review>;
-    return obj && typeof obj === 'object' ? obj : {};
-  } catch {
-    return {};
+    console.log('[fetchReviewFromServer] Fetching review for order:', orderId);
+    const res = await apiGetReviewsByOrderId(orderId);
+    console.log('[fetchReviewFromServer] Response:', res);
+    const reviews = res?.data || [];
+    if (reviews.length > 0) {
+      const review = reviews[0];
+      console.log('[fetchReviewFromServer] Found review:', review);
+      return {
+        id: review.id,
+        orderId: review.orderId,
+        rating: review.rating,
+        comment: review.comment || '',
+        createdAt: review.createdAt || new Date().toISOString(),
+        updatedAt: review.updatedAt || new Date().toISOString(),
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error('[fetchReviewFromServer] Error:', err);
+    return null;
   }
 }
-function saveReviewsMap(map: Record<string, Review>) {
-  localStorage.setItem(LS_REVIEWS, JSON.stringify(map));
+
+/* ====== Create review via API ====== */
+async function createReviewViaAPI(input: {
+  orderId: number;
+  rating: number;
+  comment: string;
+}): Promise<Review | null> {
+  try {
+    console.log('[createReviewViaAPI] Creating review for order:', input.orderId);
+    const res = await apiCreateReview({
+      orderId: input.orderId,
+      rating: input.rating,
+      comment: input.comment,
+    });
+    console.log('[createReviewViaAPI] Response:', res);
+    const data = res?.data || res;
+    if (data) {
+      return {
+        id: data.id,
+        orderId: data.orderId,
+        rating: data.rating,
+        comment: data.comment || '',
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error('[createReviewViaAPI] Error:', err);
+    throw err;
+  }
 }
-function getLocalReviewByOrder(orderId: number): Review | null {
-  const map = loadReviewsMap();
-  return map[String(orderId)] ?? null;
-}
-function createLocalReview(input: { orderId: number; rating: number; comment: string }): Review {
-  const now = new Date().toISOString();
-  const map = loadReviewsMap();
-  const rv: Review = {
-    id: Math.random().toString(36).slice(2),
-    orderId: input.orderId,
-    rating: input.rating,
-    comment: input.comment,
-    createdAt: now,
-    updatedAt: now,
-  };
-  map[String(input.orderId)] = rv; // 1 order = 1 review
-  saveReviewsMap(map);
-  return rv;
-}
-function updateLocalReviewByOrder(
-  orderId: number,
+
+/* ====== Update review via API (PUT) ====== */
+async function updateReviewViaAPI(
+  reviewId: string,
   input: { rating: number; comment: string }
-): Review {
-  const map = loadReviewsMap();
-  const key = String(orderId);
-  const old = map[key];
-  if (!old) throw new Error('Không tìm thấy review theo orderCode');
-  const rv: Review = {
-    ...old,
-    rating: input.rating,
-    comment: input.comment,
-    updatedAt: new Date().toISOString(),
-  };
-  map[key] = rv;
-  saveReviewsMap(map);
-  return rv;
+): Promise<Review | null> {
+  try {
+    console.log('[updateReviewViaAPI] Updating review:', reviewId);
+    const res = await apiUpdateReview(Number(reviewId), {
+      rating: input.rating,
+      comment: input.comment,
+    });
+    console.log('[updateReviewViaAPI] Response:', res);
+    const data = res?.data || res;
+    if (data) {
+      return {
+        id: data.id,
+        orderId: data.orderId,
+        rating: data.rating,
+        comment: data.comment || '',
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error('[updateReviewViaAPI] Error:', err);
+    throw err;
+  }
 }
-function deleteLocalReviewByOrder(orderId: number) {
-  const map = loadReviewsMap();
-  const key = String(orderId);
-  if (!map[key]) throw new Error('Không tìm thấy review theo orderCode');
-  delete map[key];
-  saveReviewsMap(map);
+
+/* ====== Delete review via API ====== */
+async function deleteReviewViaAPI(reviewId: string): Promise<boolean> {
+  try {
+    console.log('[deleteReviewViaAPI] Deleting review:', reviewId);
+    await apiDeleteReview(Number(reviewId));
+    console.log('[deleteReviewViaAPI] Deleted successfully');
+    return true;
+  } catch (err) {
+    console.error('[deleteReviewViaAPI] Error:', err);
+    throw err;
+  }
 }
 
 /* ===== broadcast helpers ===== */
@@ -154,40 +203,47 @@ export default function PaymentSuccessPage() {
   const reviewSent = !!existing;
   const canSubmitReview = status === 'PAID' && orderCode && rating > 0 && comment.trim().length > 0;
 
-  // Load sẵn review local nếu có (key = orderCode)
+  // Load sẵn review từ SERVER khi có orderCode (key = orderCode)
   useEffect(() => {
     if (!orderCode) return;
-    const rv = getLocalReviewByOrder(orderCode);
-    setExisting(rv);
-    if (rv) {
-      setRating(rv.rating);
-      setComment(rv.comment);
-    } else {
-      setRating(0);
-      setComment('');
-    }
+    console.log('[PaymentSuccess] Loading review for order:', orderCode);
+    void (async () => {
+      const rv = await fetchReviewFromServer(orderCode);
+      setExisting(rv);
+      if (rv) {
+        setRating(rv.rating);
+        setComment(rv.comment);
+      } else {
+        setRating(0);
+        setComment('');
+      }
+    })();
   }, [orderCode]);
 
   // Cross-tab sync (nếu sửa/xoá ở trang Orders)
   useEffect(() => {
     const onStorage = (ev: StorageEvent) => {
       if (ev.key === LS_REVIEWS && orderCode) {
-        const rv = getLocalReviewByOrder(orderCode);
+        void (async () => {
+          const rv = await fetchReviewFromServer(orderCode);
+          setExisting(rv);
+          if (rv) {
+            setRating(rv.rating);
+            setComment(rv.comment);
+          }
+        })();
+      }
+    };
+    const onReviewsChanged = () => {
+      if (!orderCode) return;
+      void (async () => {
+        const rv = await fetchReviewFromServer(orderCode);
         setExisting(rv);
         if (rv) {
           setRating(rv.rating);
           setComment(rv.comment);
         }
-      }
-    };
-    const onReviewsChanged = () => {
-      if (!orderCode) return;
-      const rv = getLocalReviewByOrder(orderCode);
-      setExisting(rv);
-      if (rv) {
-        setRating(rv.rating);
-        setComment(rv.comment);
-      }
+      })();
     };
     window.addEventListener('storage', onStorage);
     window.addEventListener(EVT_REVIEWS_CHANGED, onReviewsChanged as EventListener);
@@ -258,30 +314,38 @@ export default function PaymentSuccessPage() {
     };
   }, [orderCode, fetchStatus]);
 
-  /* ====== Submit review (LOCAL) + broadcast ====== */
+  /* ====== Submit review (API) + broadcast ====== */
   const handleSubmitReview = useCallback(async () => {
     if (!orderCode || (!existing && !canSubmitReview)) return;
     try {
       setSubmitting(true);
       if (existing) {
-        const updated = updateLocalReviewByOrder(orderCode, {
+        console.log('[PaymentSuccess] Updating review:', existing.id);
+        const updated = await updateReviewViaAPI(existing.id, {
           rating,
           comment: comment.trim(),
         });
-        setExisting(updated);
+        if (updated) {
+          setExisting(updated);
+          alert('✓ Cập nhật đánh giá thành công!');
+        }
       } else {
-        const created = createLocalReview({
+        console.log('[PaymentSuccess] Creating review for order:', orderCode);
+        const created = await createReviewViaAPI({
           orderId: orderCode,
           rating,
           comment: comment.trim(),
         });
-        setExisting(created);
+        if (created) {
+          setExisting(created);
+          alert('✓ Gửi đánh giá thành công!');
+        }
       }
       // thông báo cho màn Orders / các tab khác
       broadcast('reviews');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      alert(msg || 'Gửi đánh giá thất bại');
+      alert(msg || (existing ? 'Cập nhật đánh giá thất bại' : 'Gửi đánh giá thất bại'));
     } finally {
       setSubmitting(false);
     }
@@ -291,14 +355,27 @@ export default function PaymentSuccessPage() {
     if (!existing || !orderCode) return;
     if (!confirm('Xoá đánh giá này?')) return;
     try {
-      deleteLocalReviewByOrder(orderCode);
-      setExisting(null);
-      setRating(0);
-      setComment('');
-      broadcast('reviews');
+      setSubmitting(true);
+      void (async () => {
+        try {
+          console.log('[PaymentSuccess] Deleting review:', existing.id);
+          await deleteReviewViaAPI(existing.id);
+          setExisting(null);
+          setRating(0);
+          setComment('');
+          broadcast('reviews');
+          alert('✓ Xoá đánh giá thành công!');
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          alert(msg || 'Không xoá được đánh giá');
+        } finally {
+          setSubmitting(false);
+        }
+      })();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       alert(msg || 'Không xoá được đánh giá');
+      setSubmitting(false);
     }
   }, [existing, orderCode]);
 
