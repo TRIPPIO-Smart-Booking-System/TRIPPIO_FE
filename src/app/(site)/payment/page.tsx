@@ -158,34 +158,26 @@ function broadcastReviewsChanged() {
 // wrappers "API"
 async function fetchReviewByOrder(orderId: number): Promise<Review | null> {
   try {
-    console.log(`[fetchReviewByOrder] Starting fetch for order ${orderId}`);
     const res = await apiGetReviewsByOrderId(orderId);
-    console.log(`[fetchReviewByOrder] Raw API response for order ${orderId}:`, res);
     // Backend returns the array directly, or wrapped in { data: [...] }
     const reviews = Array.isArray(res) ? res : res?.data || [];
-    console.log(`[fetchReviewByOrder] Parsed reviews for order ${orderId}:`, reviews);
     if (reviews.length > 0) {
       const review = reviews[0];
-      console.log(`[fetchReviewByOrder] Returning first review for order ${orderId}:`, review);
       return review;
     }
-    console.log(`[fetchReviewByOrder] No reviews found for order ${orderId}`);
     return null;
   } catch (err) {
-    console.error(`[fetchReviewByOrder] Error fetching reviews for order ${orderId}:`, err);
     return null;
   }
 }
 
 async function createReview(input: { orderId: number; rating: number; comment: string }) {
   try {
-    console.log('[createReview] Attempting to create review for order:', input.orderId);
     const res = await apiCreateReview({
       orderId: input.orderId,
       rating: input.rating,
       comment: input.comment,
     });
-    console.log('[createReview] Response:', res);
     broadcastReviewsChanged();
     showSuccess('Đã tạo đánh giá thành công!');
     // Ensure orderId is set from input if not in response
@@ -195,14 +187,11 @@ async function createReview(input: { orderId: number; rating: number; comment: s
     }
     return reviewData;
   } catch (err) {
-    console.error('[createReview] Error:', err);
     // Check if error is "already reviewed"
     if (err instanceof Error && err.message.includes('already reviewed')) {
-      console.log('[createReview] Review already exists, fetching existing review...');
       // Try to fetch the existing review
       const existing = await fetchReviewByOrder(input.orderId);
       if (existing) {
-        console.log('[createReview] Found existing review:', existing);
         throw new Error(`Bạn đã đánh giá đơn hàng này rồi. (Rating: ${existing.rating}/5)`);
       }
     }
@@ -213,12 +202,10 @@ async function createReview(input: { orderId: number; rating: number; comment: s
 }
 async function updateReview(id: number, input: { rating: number; comment: string }) {
   try {
-    console.log('[updateReview] Attempting to update review:', id);
     const res = await apiUpdateReview(id, {
       rating: input.rating,
       comment: input.comment,
     });
-    console.log('[updateReview] Response:', res);
     broadcastReviewsChanged();
     showSuccess('Đã cập nhật đánh giá thành công!');
     return res?.data || res;
@@ -230,9 +217,7 @@ async function updateReview(id: number, input: { rating: number; comment: string
 }
 async function deleteReview(id: number) {
   try {
-    console.log('[deleteReview] Attempting to delete review:', id);
     await apiDeleteReview(id);
-    console.log('[deleteReview] Review deleted successfully');
     broadcastReviewsChanged();
     showSuccess('Đã xoá đánh giá thành công!');
     return true;
@@ -302,29 +287,23 @@ export default function OrdersPageVipPlus() {
   }
 
   async function prefetchReviews(orderIds: number[]) {
-    console.log('[Payment] prefetchReviews for orderIds:', orderIds);
     const map: Record<string, Review | null> = {};
     await Promise.all(
       orderIds.map(async (oid) => {
         try {
           const review = await fetchReviewByOrder(oid);
-          console.log(`[Payment] Review for order ${oid}:`, review);
           map[String(oid)] = review;
         } catch (err) {
-          console.error(`[Payment] Error fetching review for order ${oid}:`, err);
           map[String(oid)] = null;
         }
       })
     );
-    console.log('[Payment] All reviews fetched:', map);
     setReviewsByOrder((prev) => ({ ...prev, ...map }));
   }
 
   async function syncReviewsForCurrentOrders() {
-    console.log('[Payment] Syncing reviews for current orders');
     const ids = rowsRef.current.map((r) => r.orderId);
     if (ids.length) {
-      console.log('[Payment] Fetching reviews for order IDs:', ids);
       await prefetchReviews(ids);
     }
   }
@@ -431,23 +410,19 @@ export default function OrdersPageVipPlus() {
     setSubmitting(true);
     try {
       if (reviewModal.mode === 'create') {
-        console.log('[Payment] Creating review for order:', reviewModal.orderId);
         try {
           const created = await createReview({
             orderId: reviewModal.orderId,
             rating: reviewModal.rating,
             comment: reviewModal.comment.trim(),
           });
-          console.log('[Payment] Review created:', created);
           setReviewsByOrder((m) => ({ ...m, [String(created.orderId)]: created }));
           setReviewModal(null);
         } catch (createErr) {
           // If error is "already reviewed", try to fetch and switch to edit mode
           if (createErr instanceof Error && createErr.message.includes('already reviewed')) {
-            console.log('[Payment] Detected existing review, fetching...');
             const existing = await fetchReviewByOrder(reviewModal.orderId);
             if (existing) {
-              console.log('[Payment] Switching to edit mode with existing review:', existing);
               setReviewsByOrder((m) => ({
                 ...m,
                 [String(reviewModal.orderId)]: existing,
@@ -467,20 +442,16 @@ export default function OrdersPageVipPlus() {
         }
       } else {
         if (!reviewModal.reviewId) return;
-        console.log('[Payment] Updating review:', reviewModal.reviewId);
         const updated = await updateReview(reviewModal.reviewId, {
           rating: reviewModal.rating,
           comment: reviewModal.comment.trim(),
         });
-        console.log('[Payment] Review updated:', updated);
         setReviewsByOrder((m) => ({ ...m, [String(updated.orderId)]: updated }));
         setReviewModal(null);
       }
       // Refresh the page to show latest data
-      console.log('[Payment] Reloading orders to get latest reviews');
       await syncReviewsForCurrentOrders();
     } catch (e: unknown) {
-      console.error('[Payment] Error submitting review:', e);
       push('Lỗi', errMsg(e));
     } finally {
       setSubmitting(false);
@@ -492,15 +463,12 @@ export default function OrdersPageVipPlus() {
     if (!rv) return;
     if (!confirm('Xoá đánh giá này?')) return;
     try {
-      console.log('[Payment] Deleting review:', rv.id);
       await deleteReview(rv.id);
       setReviewsByOrder((m) => ({ ...m, [String(orderId)]: null }));
       push('Đã xoá đánh giá', `Order #${orderId}`);
       // Refresh the page to show latest data
-      console.log('[Payment] Reloading orders after delete');
       await syncReviewsForCurrentOrders();
     } catch (e: unknown) {
-      console.error('[Payment] Error deleting review:', e);
       push('Lỗi', errMsg(e));
     }
   }

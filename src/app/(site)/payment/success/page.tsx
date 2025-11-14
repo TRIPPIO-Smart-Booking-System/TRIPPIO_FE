@@ -67,15 +67,11 @@ type Review = {
 /* ====== Fetch review từ Server API ====== */
 async function fetchReviewFromServer(orderId: number): Promise<Review | null> {
   try {
-    console.log('[fetchReviewFromServer] Fetching review for order:', orderId);
     const res = await apiGetReviewsByOrderId(orderId);
-    console.log('[fetchReviewFromServer] Raw response:', res);
     // Backend returns array directly
     const reviews = Array.isArray(res) ? res : res?.data || [];
-    console.log('[fetchReviewFromServer] Parsed reviews:', reviews);
     if (reviews.length > 0) {
       const review = reviews[0];
-      console.log('[fetchReviewFromServer] Found review:', review);
       return {
         id: review.id,
         orderId: review.orderId,
@@ -85,10 +81,8 @@ async function fetchReviewFromServer(orderId: number): Promise<Review | null> {
         updatedAt: review.updatedAt,
       };
     }
-    console.log('[fetchReviewFromServer] No reviews found for order', orderId);
     return null;
   } catch (err) {
-    console.error('[fetchReviewFromServer] Error:', err);
     return null;
   }
 }

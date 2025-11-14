@@ -1348,9 +1348,9 @@ export default function AdminDashboardPage() {
                     className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
                   >
                     {/* Top Row - Main Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      {/* Order Code */}
-                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200">
+                    <div className="grid grid-cols-12 gap-4">
+                      {/* Order Code - 2 cols */}
+                      <div className="col-span-12 sm:col-span-2 pb-4 sm:pb-0 sm:border-r sm:border-slate-200">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Order Code
                         </div>
@@ -1359,18 +1359,18 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Payment ID */}
-                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                      {/* Payment ID - 2 cols */}
+                      <div className="col-span-12 sm:col-span-2 pb-4 sm:pb-0 sm:border-r sm:border-slate-200 sm:pl-4">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Payment ID
                         </div>
-                        <div className="mt-1 font-mono text-sm text-slate-600">
+                        <div className="mt-1 font-mono text-sm text-slate-600 truncate">
                           {row.paymentId || '—'}
                         </div>
                       </div>
 
-                      {/* Rating - Highlighted */}
-                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                      {/* Rating - 2 cols */}
+                      <div className="col-span-12 sm:col-span-2 pb-4 sm:pb-0 sm:border-r sm:border-slate-200 sm:pl-4">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Điểm
                         </div>
@@ -1380,18 +1380,18 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Username - Wider */}
-                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4 md:col-span-2">
+                      {/* Username - 3 cols */}
+                      <div className="col-span-12 sm:col-span-3 pb-4 sm:pb-0 sm:border-r sm:border-slate-200 sm:pl-4">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Người Dùng
                         </div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">
+                        <div className="mt-1 text-sm font-medium text-slate-900 truncate">
                           {row.userName || '—'}
                         </div>
                       </div>
 
-                      {/* Created Date & Time - Compact */}
-                      <div className="pb-4 md:pb-0 md:pl-4">
+                      {/* Created Date & Time - 3 cols */}
+                      <div className="col-span-12 sm:col-span-3 pb-4 sm:pb-0 sm:pl-4">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Ngày Tạo
                         </div>
