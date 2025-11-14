@@ -159,9 +159,17 @@ function broadcastReviewsChanged() {
 async function fetchReviewByOrder(orderId: number): Promise<Review | null> {
   try {
     const res = await apiGetReviewsByOrderId(orderId);
-    const reviews = res?.data || [];
-    return reviews.length > 0 ? reviews[0] : null;
-  } catch {
+    // Backend returns the array directly, or wrapped in { data: [...] }
+    const reviews = Array.isArray(res) ? res : res?.data || [];
+    console.log(`[fetchReviewByOrder] Order ${orderId} - reviews from API:`, reviews);
+    if (reviews.length > 0) {
+      const review = reviews[0];
+      console.log(`[fetchReviewByOrder] Returning first review:`, review);
+      return review;
+    }
+    return null;
+  } catch (err) {
+    console.error(`[fetchReviewByOrder] Error for order ${orderId}:`, err);
     return null;
   }
 }
