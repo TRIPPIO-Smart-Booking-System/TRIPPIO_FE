@@ -228,11 +228,19 @@ export default function TransportManagePage() {
       if (!Number.isFinite(price) || price < 0) throw new Error('Giá không hợp lệ.');
       if (!Number.isInteger(seats) || seats < 0) throw new Error('Số chỗ không hợp lệ.');
 
-      // IMPORTANT: include BOTH transportId and transport: { id } to satisfy [Required] Transport
+      // Get full transport object with transportType and name
+      const selectedTransport = rows.find((r) => r.id === editForm.transportId);
+      if (!selectedTransport) throw new Error('Transport không tồn tại.');
+
+      // IMPORTANT: include BOTH transportId and transport object with ALL required fields
       const body = {
         id: editForm.id,
         transportId: editForm.transportId,
-        transport: { id: editForm.transportId },
+        transport: {
+          id: selectedTransport.id,
+          transportType: selectedTransport.transportType,
+          name: selectedTransport.name,
+        },
 
         departure: editForm.departure.trim(),
         destination: editForm.destination.trim(),
