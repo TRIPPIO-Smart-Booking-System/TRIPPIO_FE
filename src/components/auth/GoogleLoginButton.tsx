@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { showError, showSuccess } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
+import { setAuth, AUTH_EVENT_NAME } from '@/lib/auth';
 
 export default function GoogleLoginButton() {
   const router = useRouter();
@@ -11,18 +12,21 @@ export default function GoogleLoginButton() {
 
   const handleGoogleSuccess = async (idToken: string | undefined) => {
     if (!idToken) {
-      console.error('[GoogleLoginButton] No id_token provided');
+      console.error('[GoogleLoginButton] ❌ No id_token provided');
       showError('Google login thất bại');
       return;
     }
 
     setIsLoading(true);
     try {
-      console.log('[GoogleLoginButton] Got id_token from Google');
+      console.log('[GoogleLoginButton] ✅ Got id_token from Google, length:', idToken.length);
 
       // Send id_token to our backend API
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://trippiowebapp.azurewebsites.net'}/api/auth/google-verify`;
-      console.log('[GoogleLoginButton] Sending id_token to backend:', apiUrl);
+      console.log('[GoogleLoginButton] 📤 Sending POST to:', apiUrl);
+      console.log('[GoogleLoginButton] 📦 Request body:', {
+        token: idToken.substring(0, 50) + '...',
+      });
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -30,79 +34,98 @@ export default function GoogleLoginButton() {
         body: JSON.stringify({ token: idToken }),
       });
 
-      console.log('[GoogleLoginButton] Backend response status:', response.status);
+      console.log('[GoogleLoginButton] 📥 Backend response status:', response.status);
+      console.log('[GoogleLoginButton] 📥 Response headers:', {
+        contentType: response.headers.get('content-type'),
+        cors: response.headers.get('access-control-allow-origin'),
+      });
+
       const data = await response.json();
-      console.log('[GoogleLoginButton] Backend response data:', {
+      console.log('[GoogleLoginButton] 📥 Full response data:', data);
+      console.log('[GoogleLoginButton] 📥 Response summary:', {
         isSuccess: data?.isSuccess,
         userEmail: data?.user?.email,
         hasAccessToken: !!data?.accessToken,
+        accessTokenLength: data?.accessToken?.length,
+        roles: data?.user?.roles,
       });
 
       if (!response.ok) {
+        console.error('[GoogleLoginButton] ❌ Response not OK:', {
+          status: response.status,
+          message: data?.message,
+        });
         showError(data?.message || 'Xác thực Google thất bại');
         return;
       }
 
-      // Nếu BE trả về accessToken, lưu vào localStorage
+      // Nếu BE trả về accessToken, lưu vào auth state
       if (data?.accessToken) {
-        try {
-          localStorage.setItem('accessToken', data.accessToken);
-          localStorage.setItem('authToken', data.accessToken);
-          if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-          if (data.user?.id) localStorage.setItem('userId', data.user.id);
-          if (data.user?.email) localStorage.setItem('userEmail', data.user.email);
-          if (data.user?.roles)
-            localStorage.setItem(
-              'roles',
-              JSON.stringify(Array.isArray(data.user.roles) ? data.user.roles : [data.user.roles])
-            );
-        } catch {
-          // ignore
-        }
+        console.log('[GoogleLoginButton] ✅ Found accessToken, calling setAuth()...');
+
+        const rolesArray = Array.isArray(data.user?.roles)
+          ? data.user.roles
+          : [data.user?.roles].filter(Boolean);
+
+        // ✅ Gọi setAuth() thay vì lưu trực tiếp vào localStorage
+        setAuth({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          userId: data.user?.id,
+          email: data.user?.email,
+          userName: data.user?.userName || data.user?.email,
+          roles: rolesArray,
+        });
+
+        console.log('[GoogleLoginButton] ✅ setAuth() called with:', {
+          userId: data.user?.id,
+          email: data.user?.email,
+          roles: rolesArray,
+        });
 
         showSuccess('Đăng nhập Google thành công!');
 
         // Dispatch auth:changed event for layout to detect login
-        window.dispatchEvent(new Event('auth:changed'));
+        window.dispatchEvent(new Event(AUTH_EVENT_NAME));
+        console.log('[GoogleLoginButton] ✅ Dispatched', AUTH_EVENT_NAME, 'event');
 
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-        const roles = data.user?.roles || [];
         let target = '/homepage';
-        if (Array.isArray(roles)) {
-          const rolesStr = roles.map((r) => String(r).toLowerCase());
+        if (Array.isArray(rolesArray)) {
+          const rolesStr = rolesArray.map((r) => String(r).toLowerCase());
           if (rolesStr.includes('admin')) target = '/admin';
           else if (rolesStr.includes('staff')) target = '/staff';
         }
 
+        console.log('[GoogleLoginButton] 🔄 Redirecting to:', target);
         router.replace(redirectParam || target);
         router.refresh();
       } else if (data?.isSuccess) {
+        console.log('[GoogleLoginButton] ⚠️ isSuccess but no accessToken');
         showSuccess('Đăng nhập Google thành công!');
-        window.dispatchEvent(new Event('auth:changed'));
+        window.dispatchEvent(new Event(AUTH_EVENT_NAME));
         const redirectParam = new URLSearchParams(window.location.search).get('redirect');
         router.replace(redirectParam || '/homepage');
         router.refresh();
       } else {
+        console.error('[GoogleLoginButton] ❌ No accessToken and isSuccess is false');
         showError('Không thể hoàn thành đăng nhập');
       }
     } catch (error: unknown) {
-      console.error('[GoogleLoginButton] Catch block - error:', error);
-      console.error('[GoogleLoginButton] Error type:', typeof error);
-      console.error(
-        '[GoogleLoginButton] Error keys:',
-        error instanceof Error ? Object.keys(error) : 'N/A'
-      );
+      console.error('[GoogleLoginButton] ❌ Catch block error:', error);
+      console.error('[GoogleLoginButton] ❌ Error type:', typeof error);
 
       let errorMsg = 'Đăng nhập Google thất bại. Vui lòng thử lại.';
 
       if (error instanceof Error) {
         errorMsg = error.message;
-        console.error('[GoogleLoginButton] Error message:', errorMsg);
+        console.error('[GoogleLoginButton] ❌ Error message:', errorMsg);
+        console.error('[GoogleLoginButton] ❌ Error stack:', error.stack);
       } else if (typeof error === 'object' && error !== null && 'message' in error) {
         errorMsg = String((error as any).message);
       }
 
-      console.error('[GoogleLoginButton] Final error message:', errorMsg);
+      console.error('[GoogleLoginButton] ❌ Final error:', errorMsg);
       showError(errorMsg);
     } finally {
       setIsLoading(false);

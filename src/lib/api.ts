@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { getAuth, extractUserIdFromJwt } from './auth';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippiowebapp.azurewebsites.net';
 
 function isFormData(v: unknown): v is FormData {
   return typeof FormData !== 'undefined' && v instanceof FormData;

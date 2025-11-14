@@ -74,17 +74,17 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-[80vh] bg-slate-50">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:py-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
           <SidebarAccount
             activeTab={tab}
             setTab={setTab}
             fullName={user?.fullName ?? (status === 'ok' ? '' : 'Chưa đăng nhập')}
           />
 
-          <section className="mx-auto w-full max-w-3xl space-y-6">
+          <section className="mx-auto w-full max-w-3xl space-y-4 sm:space-y-6">
             {status === 'unauth' && (
-              <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground">
+              <div className="rounded-xl border bg-white p-4 sm:p-6 text-sm text-muted-foreground">
                 Bạn chưa đăng nhập. Vui lòng đăng nhập để xem tài khoản.
                 {err && <div className="mt-2 text-red-600">Lỗi: {err}</div>}
               </div>
