@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useParams, useRouter } from 'next/navigation';
 import { getAuth } from '@/lib/auth';
 
@@ -228,6 +229,7 @@ export default function TransportTripCreatePage() {
 
       await postTrip(payload);
 
+      toast.success('✅ Tạo Trip thành công!');
       setOkMsg('✅ Tạo Trip thành công!');
       // reset nhẹ
       setDepartureTime('');
@@ -235,7 +237,9 @@ export default function TransportTripCreatePage() {
       setPrice('');
       setSeats('');
     } catch (e) {
-      setErr(errMsg(e));
+      const msg = errMsg(e);
+      setErr(msg);
+      toast.error(`❌ ${msg}`);
     } finally {
       setSubmitting(false);
     }
@@ -249,52 +253,56 @@ export default function TransportTripCreatePage() {
         aria-hidden
         className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_600px_at_85%_-10%,rgba(56,189,248,0.25),transparent_60%),radial-gradient(900px_500px_at_0%_0%,rgba(45,212,191,0.25),transparent_60%),linear-gradient(180deg,#ecfeff_0%,#f0fdfa_100%)]"
       />
-      <div className="mx-auto w-full max-w-4xl px-4 pb-20 pt-8">
+      <div className="mx-auto w-full max-w-4xl px-3 sm:px-4 pb-20 pt-6 sm:pt-8">
         {/* Breadcrumb / Topbar */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <a
             href="/staff"
-            className="rounded-xl border border-white/60 bg-white/80 px-3 py-1.5 text-sm font-semibold text-sky-700 shadow hover:bg-white"
+            className="rounded-xl border border-white/60 bg-white/80 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-sky-700 shadow hover:bg-white"
             title="Về Dashboard Staff"
           >
             ← Về Dashboard
           </a>
           <a
             href="/staff/transport"
-            className="rounded-xl border border-white/60 bg-white/80 px-3 py-1.5 text-sm font-semibold text-sky-700 shadow hover:bg-white"
+            className="rounded-xl border border-white/60 bg-white/80 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-sky-700 shadow hover:bg-white"
             title="Về trang Transport"
           >
             ⤺ Danh sách Transport
           </a>
           <span className="text-slate-500">/</span>
-          <span className="text-sm text-slate-700">Tạo Trip mới</span>
+          <span className="text-xs sm:text-sm text-slate-700">Tạo Trip mới</span>
         </div>
 
         {/* Header */}
         <div className="mb-5 overflow-hidden rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur">
-          <div className="relative p-5">
+          <div className="relative p-4 sm:p-5">
             <div className="absolute -top-20 right-0 -z-10 h-40 w-40 rounded-full bg-cyan-400/20 blur-3xl" />
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-extrabold tracking-tight text-sky-800">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-sky-800">
                   ➕ Tạo Trip cho Transport
                 </h1>
                 {loadingInfo ? (
-                  <p className="mt-1 text-sky-900/80">Đang tải thông tin transport…</p>
+                  <p className="mt-1 text-xs sm:text-sm text-sky-900/80">
+                    Đang tải thông tin transport…
+                  </p>
                 ) : infoErr ? (
-                  <p className="mt-1 whitespace-pre-wrap text-red-700">{infoErr}</p>
+                  <p className="mt-1 text-xs sm:text-sm whitespace-pre-wrap text-red-700">
+                    {infoErr}
+                  </p>
                 ) : transport ? (
-                  <p className="mt-1 text-sky-900/90">
+                  <p className="mt-1 text-xs sm:text-sm text-sky-900/90">
                     <span className="mr-1">{iconByType(transport.transportType)}</span>
                     <b>{transport.name}</b> • Loại: <b>{transport.transportType}</b>
                   </p>
                 ) : (
-                  <p className="mt-1 text-red-700">Không tìm thấy transport.</p>
+                  <p className="mt-1 text-xs sm:text-sm text-red-700">Không tìm thấy transport.</p>
                 )}
               </div>
               <button
                 onClick={() => router.push('/staff/transport')}
-                className="shrink-0 rounded-2xl border border-sky-200 bg-white px-4 py-2 font-semibold text-sky-700 shadow hover:bg-sky-50"
+                className="shrink-0 rounded-2xl border border-sky-200 bg-white px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-sky-700 shadow hover:bg-sky-50 whitespace-nowrap"
               >
                 Quay lại quản lý
               </button>
@@ -305,11 +313,13 @@ export default function TransportTripCreatePage() {
         {/* Form Card */}
         <form
           onSubmit={onSubmit}
-          className="space-y-5 overflow-hidden rounded-3xl border border-white/60 bg-white/90 p-5 shadow-xl backdrop-blur"
+          className="space-y-4 sm:space-y-5 overflow-hidden rounded-3xl border border-white/60 bg-white/90 p-4 sm:p-5 shadow-xl backdrop-blur"
         >
           {/* From / To */}
           <div>
-            <div className="mb-2 text-sm font-bold text-slate-900">Điểm đi / Điểm đến</div>
+            <div className="mb-2 text-xs sm:text-sm font-bold text-slate-900">
+              Điểm đi / Điểm đến
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               {/* From */}
               <div>
@@ -393,7 +403,7 @@ export default function TransportTripCreatePage() {
 
           {/* Time */}
           <div>
-            <div className="mb-2 text-sm font-bold text-slate-900">Thời gian</div>
+            <div className="mb-2 text-xs sm:text-sm font-bold text-slate-900">Thời gian</div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">
@@ -428,7 +438,7 @@ export default function TransportTripCreatePage() {
 
           {/* Price & Seats */}
           <div>
-            <div className="mb-2 text-sm font-bold text-slate-900">Giá & Chỗ</div>
+            <div className="mb-2 text-xs sm:text-sm font-bold text-slate-900">Giá & Chỗ</div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700">Giá *</label>
@@ -462,34 +472,34 @@ export default function TransportTripCreatePage() {
           </div>
 
           {err && (
-            <div className="whitespace-pre-wrap rounded-xl border border-red-200/60 bg-red-50/80 px-3 py-2 text-sm text-red-700">
+            <div className="whitespace-pre-wrap rounded-xl border border-red-200/60 bg-red-50/80 px-3 py-2 text-xs sm:text-sm text-red-700">
               {err}
             </div>
           )}
           {okMsg && (
-            <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/80 px-3 py-2 text-sm text-emerald-700">
+            <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/80 px-3 py-2 text-xs sm:text-sm text-emerald-700">
               {okMsg}
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 pt-1">
             <button
               type="submit"
               disabled={!canSubmit}
-              className="rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 px-5 py-2.5 font-semibold text-white shadow-lg shadow-sky-500/20 ring-1 ring-white/20 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-semibold text-white shadow-lg shadow-sky-500/20 ring-1 ring-white/20 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap"
             >
               {submitting ? 'Đang tạo…' : 'Tạo Trip'}
             </button>
             <button
               type="button"
               onClick={() => router.push('/staff/transport')}
-              className="rounded-2xl border border-sky-200 bg-white px-5 py-2.5 font-semibold text-sky-700 shadow hover:bg-sky-50"
+              className="rounded-2xl border border-sky-200 bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-semibold text-sky-700 shadow hover:bg-sky-50 whitespace-nowrap"
             >
               Về trang Transport
             </button>
             <a
               href="/staff"
-              className="rounded-2xl border border-emerald-200 bg-white px-5 py-2.5 font-semibold text-emerald-700 shadow hover:bg-emerald-50"
+              className="rounded-2xl border border-emerald-200 bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-semibold text-emerald-700 shadow hover:bg-emerald-50 whitespace-nowrap text-center"
             >
               ← Về Dashboard
             </a>

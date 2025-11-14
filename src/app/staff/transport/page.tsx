@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import { getAuth } from '@/lib/auth';
 
 /* ================== Types & Const ================== */
@@ -285,9 +286,12 @@ export default function TransportManagePage() {
             : t
         )
       );
+      toast.success('✅ Cập nhật chuyến đi thành công!');
       closeEdit();
     } catch (e) {
-      setSaveErr(errMsg(e));
+      const msg = errMsg(e);
+      setSaveErr(msg);
+      toast.error(`❌ ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -302,25 +306,25 @@ export default function TransportManagePage() {
         className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-sky-100/60 via-teal-100/40 to-transparent"
       />
 
-      <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-8 lg:max-w-7xl">
+      <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 pb-16 pt-6 sm:pt-8 lg:max-w-7xl">
         {/* Header */}
-        <header className="mb-5">
-          <div className="flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-xl backdrop-blur md:flex-row md:items-center md:justify-between">
+        <header className="mb-4 sm:mb-5">
+          <div className="flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/90 p-4 sm:p-5 shadow-xl backdrop-blur md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-sky-800 md:text-3xl">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-sky-800">
                 🧭 Quản lý Transport
               </h1>
-              <p className="mt-1 text-sky-900/80">
+              <p className="mt-1 text-xs sm:text-sm text-sky-900/80">
                 Tạo hãng/tuyến và gắn các chuyến (TransportTrip) cho từng transport.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-sky-600/10 px-3 py-1 text-sm font-semibold text-sky-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <span className="rounded-full bg-sky-600/10 px-3 py-1 text-xs sm:text-sm font-semibold text-sky-800">
                 {view.length} transport • {totalTrips} trip
               </span>
               <a
                 href="/staff/transport/new"
-                className="rounded-2xl bg-sky-600 px-4 py-2 font-semibold text-white shadow hover:brightness-105"
+                className="rounded-2xl bg-sky-600 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-semibold text-white shadow hover:brightness-105"
               >
                 + Tạo Transport
               </a>
@@ -470,16 +474,16 @@ export default function TransportManagePage() {
 
       {/* ================== Edit Modal ================== */}
       {editOpen && editForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/40" onClick={() => !saving && closeEdit()} />
           {/* Dialog */}
-          <div className="relative z-10 w-[min(680px,92vw)] rounded-2xl bg-white p-5 shadow-2xl">
+          <div className="relative z-10 w-full max-w-2xl rounded-2xl bg-white p-4 sm:p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="mb-3 flex items-center justify-between">
-              <div className="text-lg font-bold">Cập nhật TransportTrip</div>
+              <div className="text-base sm:text-lg font-bold">Cập nhật TransportTrip</div>
               <button
                 onClick={() => !saving && closeEdit()}
-                className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100"
+                className="shrink-0 rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100"
                 disabled={saving}
               >
                 ✕
@@ -489,7 +493,7 @@ export default function TransportManagePage() {
             {/* Form */}
             <div className="grid gap-3 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm text-slate-600">Transport</label>
+                <label className="mb-1 block text-xs sm:text-sm text-slate-600">Transport</label>
                 <select
                   value={editForm.transportId}
                   onChange={(e) =>
@@ -515,7 +519,7 @@ export default function TransportManagePage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm text-slate-600">Điểm đi</label>
+                <label className="mb-1 block text-xs sm:text-sm text-slate-600">Điểm đi</label>
                 <input
                   value={editForm.departure}
                   onChange={(e) =>
@@ -526,7 +530,7 @@ export default function TransportManagePage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-slate-600">Điểm đến</label>
+                <label className="mb-1 block text-xs sm:text-sm text-slate-600">Điểm đến</label>
                 <input
                   value={editForm.destination}
                   onChange={(e) =>
@@ -538,7 +542,7 @@ export default function TransportManagePage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm text-slate-600">Khởi hành</label>
+                <label className="mb-1 block text-xs sm:text-sm text-slate-600">Khởi hành</label>
                 <input
                   type="datetime-local"
                   value={editForm.departureTime}
@@ -550,7 +554,7 @@ export default function TransportManagePage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-slate-600">Đến</label>
+                <label className="mb-1 block text-xs sm:text-sm text-slate-600">Đến</label>
                 <input
                   type="datetime-local"
                   value={editForm.arrivalTime}
@@ -563,7 +567,7 @@ export default function TransportManagePage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm text-slate-600">Giá</label>
+                <label className="mb-1 block text-xs sm:text-sm text-slate-600">Giá</label>
                 <input
                   inputMode="decimal"
                   value={editForm.price}
@@ -573,7 +577,7 @@ export default function TransportManagePage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-slate-600">Số chỗ</label>
+                <label className="mb-1 block text-xs sm:text-sm text-slate-600">Số chỗ</label>
                 <input
                   inputMode="numeric"
                   value={editForm.availableSeats}
@@ -587,22 +591,22 @@ export default function TransportManagePage() {
             </div>
 
             {saveErr && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs sm:text-sm text-red-700">
                 {saveErr}
               </div>
             )}
 
-            <div className="mt-4 flex items-center justify-end gap-2">
+            <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
               <button
                 onClick={closeEdit}
-                className="rounded-xl border px-4 py-2 text-sm hover:bg-slate-50"
+                className="rounded-xl border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-slate-50"
                 disabled={saving}
               >
                 Hủy
               </button>
               <button
                 onClick={submitEdit}
-                className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-105 disabled:opacity-70"
+                className="rounded-xl bg-sky-600 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white hover:brightness-105 disabled:opacity-70"
                 disabled={saving}
               >
                 {saving ? 'Đang lưu…' : 'Lưu thay đổi'}

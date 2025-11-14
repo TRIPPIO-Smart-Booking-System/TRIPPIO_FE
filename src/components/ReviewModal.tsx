@@ -104,15 +104,17 @@ export default function ReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3 sm:p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-800">Đánh giá đơn hàng #{orderId}</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-slate-800">
+            Đánh giá đơn hàng #{orderId}
+          </h3>
           <button
             onClick={handleClose}
             disabled={saving}
-            className="rounded-lg p-1 hover:bg-slate-100 disabled:opacity-50"
+            className="shrink-0 rounded-lg p-1 hover:bg-slate-100 disabled:opacity-50"
             aria-label="Close"
           >
             <X className="h-5 w-5 text-slate-500" />
@@ -126,14 +128,18 @@ export default function ReviewModal({
               <Star className="h-6 w-6 fill-emerald-600 text-emerald-600" />
             </div>
             <p className="font-semibold text-slate-800">Cảm ơn bạn!</p>
-            <p className="mt-1 text-sm text-slate-600">Đánh giá của bạn đã được ghi nhận</p>
+            <p className="mt-1 text-xs sm:text-sm text-slate-600">
+              Đánh giá của bạn đã được ghi nhận
+            </p>
           </div>
         ) : (
           <>
             {/* Rating Section */}
             <div className="mb-5">
-              <label className="block text-sm font-medium text-slate-700 mb-3">Chọn số sao</label>
-              <div className="flex items-center gap-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-3">
+                Chọn số sao
+              </label>
+              <div className="flex items-center gap-1 sm:gap-2">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <button
                     key={s}
@@ -144,7 +150,7 @@ export default function ReviewModal({
                     aria-label={`Chọn ${s} sao`}
                   >
                     <Star
-                      className={`h-8 w-8 ${
+                      className={`h-6 sm:h-8 w-6 sm:w-8 ${
                         s <= rating
                           ? 'fill-amber-400 text-amber-400'
                           : 'fill-slate-200 text-slate-200'
@@ -153,14 +159,14 @@ export default function ReviewModal({
                   </button>
                 ))}
               </div>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-xs sm:text-sm text-slate-600">
                 Bạn đánh giá: <span className="font-semibold">{rating} trên 5 sao</span>
               </p>
             </div>
 
             {/* Comment Section */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
                 Nhận xét (tuỳ chọn)
               </label>
               <textarea
@@ -169,7 +175,7 @@ export default function ReviewModal({
                 disabled={saving}
                 rows={4}
                 maxLength={500}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50"
+                className="w-full rounded-lg border border-slate-200 px-2 sm:px-3 py-2 text-xs sm:text-sm placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50"
                 placeholder="Chia sẻ trải nghiệm của bạn…"
               />
               <p className="mt-1 text-xs text-slate-500">{comment.length}/500 ký tự</p>
@@ -177,7 +183,7 @@ export default function ReviewModal({
 
             {/* Error Message */}
             {err && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-2 sm:p-3 text-xs sm:text-sm text-red-700">
                 {err}
               </div>
             )}
@@ -185,20 +191,20 @@ export default function ReviewModal({
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2">
           {!success && (
             <>
               <button
                 onClick={handleClose}
                 disabled={saving}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
+                className="rounded-lg border border-slate-200 bg-white px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
               >
                 Để sau
               </button>
               <button
                 onClick={submit}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 {saving ? 'Đang gửi…' : 'Gửi đánh giá'}
@@ -208,7 +214,7 @@ export default function ReviewModal({
           {success && (
             <button
               onClick={handleClose}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition w-full"
+              className="rounded-lg bg-blue-600 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 transition w-full"
             >
               Đóng
             </button>

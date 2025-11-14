@@ -33,7 +33,7 @@ export default function TransportSearchBar({
 
   return (
     <div
-      className={`grid gap-3 rounded-2xl bg-white/80 p-3 shadow-lg backdrop-blur md:grid-cols-5 ${className}`}
+      className={`grid gap-2 sm:gap-3 rounded-2xl bg-white/80 p-2 sm:p-3 shadow-lg backdrop-blur sm:grid-cols-2 md:grid-cols-5 ${className}`}
     >
       <Field label="Điểm đi">
         <CitySelect value={from} onChange={setFrom} options={opts} placeholder="Nhập / chọn" />
@@ -49,7 +49,7 @@ export default function TransportSearchBar({
           value={date}
           min={new Date().toISOString().slice(0, 10)}
           onChange={(e) => setDate(e.target.value)}
-          className="h-12 w-full rounded-xl border px-3 outline-none focus:ring-2 focus:ring-sky-200"
+          className="h-10 sm:h-12 w-full rounded-xl border px-2 sm:px-3 text-xs sm:text-base outline-none focus:ring-2 focus:ring-sky-200"
         />
       </Field>
 
@@ -58,23 +58,23 @@ export default function TransportSearchBar({
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="h-12 w-full rounded-xl border px-3 outline-none focus:ring-2 focus:ring-sky-200"
+          className="h-10 sm:h-12 w-full rounded-xl border px-2 sm:px-3 text-xs sm:text-base outline-none focus:ring-2 focus:ring-sky-200"
         />
       </Field>
 
       <Field label="Hành khách">
-        <div className="flex h-12 items-center justify-between rounded-xl border px-2">
+        <div className="flex h-10 sm:h-12 items-center justify-between rounded-xl border px-1.5 sm:px-2">
           <button
             type="button"
-            className="h-8 w-8 rounded border hover:bg-zinc-50"
+            className="h-7 sm:h-8 w-7 sm:w-8 rounded border hover:bg-zinc-50 text-sm"
             onClick={() => setPassengers((p) => Math.max(1, p - 1))}
           >
             −
           </button>
-          <span className="w-10 text-center">{passengers}</span>
+          <span className="w-8 text-center text-xs sm:text-base">{passengers}</span>
           <button
             type="button"
-            className="h-8 w-8 rounded border hover:bg-zinc-50"
+            className="h-7 sm:h-8 w-7 sm:w-8 rounded border hover:bg-zinc-50 text-sm"
             onClick={() => setPassengers((p) => p + 1)}
           >
             +
@@ -82,11 +82,11 @@ export default function TransportSearchBar({
         </div>
       </Field>
 
-      <div className="md:col-span-5 flex justify-end">
+      <div className="sm:col-span-2 md:col-span-5 flex justify-end">
         <button
           type="button"
           onClick={submit}
-          className="h-11 rounded-xl bg-blue-600 px-6 font-semibold text-white hover:bg-blue-700"
+          className="h-10 sm:h-11 rounded-xl bg-blue-600 px-4 sm:px-6 text-xs sm:text-base font-semibold text-white hover:bg-blue-700"
         >
           Tìm chuyến
         </button>
@@ -122,7 +122,7 @@ function CitySelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-12 w-full rounded-xl border px-3 outline-none focus:ring-2 focus:ring-sky-200"
+        className="h-10 sm:h-12 w-full rounded-xl border px-2 sm:px-3 text-xs sm:text-base outline-none focus:ring-2 focus:ring-sky-200"
       />
       {/* 1 datalist chung cho cả component */}
       <datalist id="city-list">
