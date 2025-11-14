@@ -56,12 +56,12 @@ type StatusResp = {
 /* ================= Local Review Store (by orderCode) ================= */
 
 type Review = {
-  id: string;
+  id: number; // Backend returns int, not string
   orderId: number; // = orderCode
   rating: number; // 1..5
   comment: string;
-  createdAt: string; // ISO
-  updatedAt: string; // ISO
+  createdAt?: string; // ISO
+  updatedAt?: string; // ISO
 };
 
 /* ====== Fetch review từ Server API ====== */
@@ -69,8 +69,10 @@ async function fetchReviewFromServer(orderId: number): Promise<Review | null> {
   try {
     console.log('[fetchReviewFromServer] Fetching review for order:', orderId);
     const res = await apiGetReviewsByOrderId(orderId);
-    console.log('[fetchReviewFromServer] Response:', res);
-    const reviews = res?.data || [];
+    console.log('[fetchReviewFromServer] Raw response:', res);
+    // Backend returns array directly
+    const reviews = Array.isArray(res) ? res : res?.data || [];
+    console.log('[fetchReviewFromServer] Parsed reviews:', reviews);
     if (reviews.length > 0) {
       const review = reviews[0];
       console.log('[fetchReviewFromServer] Found review:', review);
@@ -79,10 +81,11 @@ async function fetchReviewFromServer(orderId: number): Promise<Review | null> {
         orderId: review.orderId,
         rating: review.rating,
         comment: review.comment || '',
-        createdAt: review.createdAt || new Date().toISOString(),
-        updatedAt: review.updatedAt || new Date().toISOString(),
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
       };
     }
+    console.log('[fetchReviewFromServer] No reviews found for order', orderId);
     return null;
   } catch (err) {
     console.error('[fetchReviewFromServer] Error:', err);
@@ -124,12 +127,12 @@ async function createReviewViaAPI(input: {
 
 /* ====== Update review via API (PUT) ====== */
 async function updateReviewViaAPI(
-  reviewId: string,
+  reviewId: number,
   input: { rating: number; comment: string }
 ): Promise<Review | null> {
   try {
     console.log('[updateReviewViaAPI] Updating review:', reviewId);
-    const res = await apiUpdateReview(Number(reviewId), {
+    const res = await apiUpdateReview(reviewId, {
       rating: input.rating,
       comment: input.comment,
     });
@@ -153,10 +156,10 @@ async function updateReviewViaAPI(
 }
 
 /* ====== Delete review via API ====== */
-async function deleteReviewViaAPI(reviewId: string): Promise<boolean> {
+async function deleteReviewViaAPI(reviewId: number): Promise<boolean> {
   try {
     console.log('[deleteReviewViaAPI] Deleting review:', reviewId);
-    await apiDeleteReview(Number(reviewId));
+    await apiDeleteReview(reviewId);
     console.log('[deleteReviewViaAPI] Deleted successfully');
     return true;
   } catch (err) {
