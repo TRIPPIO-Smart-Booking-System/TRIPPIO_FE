@@ -43,6 +43,9 @@ export default function ReviewModal({
   if (!open) return null;
 
   const submit = async () => {
+    console.log('[ReviewModal.submit] === Submit started ===');
+    console.log('[ReviewModal.submit] OrderId:', orderId);
+
     if (!orderId) {
       setErr('Không tìm thấy đơn hàng');
       return;
@@ -62,6 +65,12 @@ export default function ReviewModal({
         authFromStorage.accessToken ? 'getAuth()' : 'getToken()'
       );
       console.log('[ReviewModal.submit] Token available:', token ? '✓ Yes' : '✗ No');
+      console.log('[ReviewModal.submit] Auth object:', {
+        hasAccessToken: !!authFromStorage.accessToken,
+        hasRefreshToken: !!authFromStorage.refreshToken,
+        hasUserId: !!authFromStorage.userId,
+        hasEmail: !!authFromStorage.email,
+      });
 
       if (!token) {
         console.warn('[ReviewModal.submit] ⚠️ No token found at all');
@@ -115,7 +124,14 @@ export default function ReviewModal({
         onClose(true);
       }, 1500);
     } catch (e: unknown) {
-      setErr(errorMessage(e));
+      const errMsg = errorMessage(e);
+      console.error('[ReviewModal.submit] Caught error:', {
+        error: e,
+        message: errMsg,
+        type: typeof e,
+        stack: e instanceof Error ? e.stack : 'N/A',
+      });
+      setErr(errMsg);
     } finally {
       setSaving(false);
     }
