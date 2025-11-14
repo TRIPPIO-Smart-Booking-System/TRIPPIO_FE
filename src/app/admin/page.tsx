@@ -1348,7 +1348,7 @@ export default function AdminDashboardPage() {
                     className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-lg transition-all duration-200"
                   >
                     {/* Top Row - Main Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       {/* Order Code */}
                       <div className="pb-4 md:pb-0 md:border-r md:border-slate-200">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -1380,8 +1380,8 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Username */}
-                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                      {/* Username - Wider */}
+                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4 md:col-span-2">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Người Dùng
                         </div>
@@ -1390,8 +1390,8 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Created Date */}
-                      <div className="pb-4 md:pb-0 md:border-r md:border-slate-200 md:pl-4">
+                      {/* Created Date & Time - Compact */}
+                      <div className="pb-4 md:pb-0 md:pl-4">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Ngày Tạo
                         </div>
@@ -1400,11 +1400,7 @@ export default function AdminDashboardPage() {
                             ? new Date(row.createdAt).toLocaleDateString('vi-VN')
                             : '—'}
                         </div>
-                      </div>
-
-                      {/* Time */}
-                      <div className="md:pl-4">
-                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        <div className="mt-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                           Giờ
                         </div>
                         <div className="mt-1 text-sm text-slate-600">
