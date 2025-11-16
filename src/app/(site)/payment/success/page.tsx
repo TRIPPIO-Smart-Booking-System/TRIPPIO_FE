@@ -12,6 +12,7 @@ import {
   apiDeleteReview,
   apiGetReviewsByOrderId,
 } from '@/lib/review.api';
+import { formatVietnamDateTime } from '@/lib/timezone';
 
 /* ================= Basics ================= */
 
@@ -477,9 +478,7 @@ export default function PaymentSuccessPage() {
                       <div className="text-emerald-700">{fmtVND(t?.amount ?? 0)}</div>
                     </div>
                     <div className="mt-1 text-[12px] text-slate-600">
-                      {t?.transactionDateTime
-                        ? new Date(t.transactionDateTime).toLocaleString('vi-VN')
-                        : ''}
+                      {t?.transactionDateTime ? formatVietnamDateTime(t.transactionDateTime) : ''}
                     </div>
                     {t?.description && (
                       <div className="mt-1 truncate text-[12px] text-slate-500">

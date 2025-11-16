@@ -4,6 +4,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { showSuccess, showError } from '@/lib/toast';
+import { formatVietnamDateTime } from '@/lib/timezone';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'https://trippio.azurewebsites.net';
 
@@ -33,7 +34,7 @@ function money(n: number, currency: 'VND' | 'USD' = 'VND') {
   });
 }
 function dt(s: string) {
-  return new Date(s).toLocaleString('vi-VN', {
+  return formatVietnamDateTime(s, 'vi-VN', {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',

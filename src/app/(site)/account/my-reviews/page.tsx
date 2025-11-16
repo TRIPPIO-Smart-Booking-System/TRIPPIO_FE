@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { showError, showLoading, showSuccess } from '@/lib/toast';
+import { formatVietnamDate } from '@/lib/timezone';
 
 interface Review {
   reviewId: number;
@@ -141,9 +142,9 @@ export default function MyReviewsPage() {
               <p className="text-gray-700 mb-4">{review.comment}</p>
 
               <div className="flex gap-2 text-xs text-gray-500">
-                <span>Ngày tạo: {new Date(review.createdAt).toLocaleDateString('vi-VN')}</span>
+                <span>Ngày tạo: {formatVietnamDate(review.createdAt)}</span>
                 {review.updatedAt !== review.createdAt && (
-                  <span>Cập nhật: {new Date(review.updatedAt).toLocaleDateString('vi-VN')}</span>
+                  <span>Cập nhật: {formatVietnamDate(review.updatedAt)}</span>
                 )}
               </div>
             </div>

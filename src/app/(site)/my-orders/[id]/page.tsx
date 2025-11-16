@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { ChevronLeft, Loader2, AlertCircle, CheckCircle2, Package } from 'lucide-react';
 import Container from '@/components/layout/Container';
 import Footer from '@/components/layout/Footer';
+import { formatVietnamDateTime } from '@/lib/timezone';
 
 type ApiOrderItem = {
   id: number;
@@ -37,18 +38,13 @@ function formatVND(amount: number): string {
 
 function formatDate(iso?: string): string {
   if (!iso) return '';
-  try {
-    const date = new Date(iso);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
+  return formatVietnamDateTime(iso, 'vi-VN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function getStatusColor(status?: string): string {

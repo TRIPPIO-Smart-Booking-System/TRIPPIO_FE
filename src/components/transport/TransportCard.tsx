@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useMemo, useState, useEffect } from 'react';
 import type { ApiTransport, ApiTransportTrip } from '@/lib/dataCache';
 import { getTransportImageByType } from '@/lib/imageLoader';
+import { formatVietnamDateTime } from '@/lib/timezone';
 
 type Currency = 'VND' | 'USD';
 
@@ -15,15 +16,13 @@ const money = (n: number, c: Currency = 'VND') =>
   });
 
 const fmt = (iso?: string) => {
-  const d = iso ? new Date(iso) : null;
-  return d && !isNaN(+d)
-    ? d.toLocaleString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-      })
-    : '—';
+  if (!iso) return '—';
+  return formatVietnamDateTime(iso, 'vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+  });
 };
 
 /* --------- Art config (ảnh + gradient) --------- */

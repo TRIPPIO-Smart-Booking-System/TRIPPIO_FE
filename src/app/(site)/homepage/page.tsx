@@ -9,6 +9,7 @@ import { apiListShows, type ApiShow } from '@/data/show.api';
 import { getHotelImageByIndex } from '@/lib/imageLoader';
 import Container from '@/components/layout/Container';
 import Footer from '@/components/layout/Footer';
+import { formatVietnamDate } from '@/lib/timezone';
 
 // Random image utils
 function getRandomShowImage(seed: number): string {
@@ -46,12 +47,7 @@ function formatPrice(price: number): string {
 }
 
 function formatDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+  return formatVietnamDate(dateStr, 'vi-VN') || dateStr;
 }
 
 interface HotelCardProps {

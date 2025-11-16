@@ -10,6 +10,7 @@ import 'swiper/css/navigation';
 import Button from '@/components/ui/Button';
 import Container from '@/components/layout/Container';
 import { apiFeaturedTransportTrips, type ApiTransportTrip } from '@/lib/api-transports';
+import { formatVietnamTime } from '@/lib/timezone';
 
 export default function FeaturedTransportTrips() {
   const [trips, setTrips] = useState<ApiTransportTrip[]>([]);
@@ -32,10 +33,7 @@ export default function FeaturedTransportTrips() {
 
   const formatTime = (isoString: string) => {
     try {
-      return new Date(isoString).toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      return formatVietnamTime(isoString, 'vi-VN');
     } catch {
       return isoString;
     }

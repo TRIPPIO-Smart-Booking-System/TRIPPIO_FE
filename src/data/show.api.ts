@@ -79,15 +79,15 @@ export async function apiDeleteShow(id: string): Promise<void> {
   }
 }
 // ---- Formatting utils (export để ShowCard dùng) ----
+import { formatVietnamDateTime } from '@/lib/timezone';
+
 export function formatDateTime(
   iso?: string,
   locale: string = 'vi-VN',
   opts?: Intl.DateTimeFormatOptions
 ): string {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleString(locale, opts ?? { dateStyle: 'medium', timeStyle: 'short' });
+  return formatVietnamDateTime(iso, locale, opts ?? { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export function formatMoney(value: number, currency: 'VND' | 'USD' = 'VND'): string {

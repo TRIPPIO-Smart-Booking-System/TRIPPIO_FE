@@ -1,5 +1,7 @@
 'use client';
 
+import { formatVietnamDate } from '@/lib/timezone';
+
 type Review = {
   id: string;
   name: string;
@@ -40,7 +42,7 @@ export default function ReviewList({
             </div>
             <div className="mt-1 text-xs text-zinc-500">
               {r.room_type ? `${r.room_type} • ` : ''}
-              {new Date(r.date).toLocaleDateString('vi-VN')}
+              {formatVietnamDate(r.date)}
             </div>
             {r.text && <p className="mt-2 text-sm text-zinc-700">{r.text}</p>}
             {r.photos && r.photos.length > 0 && (

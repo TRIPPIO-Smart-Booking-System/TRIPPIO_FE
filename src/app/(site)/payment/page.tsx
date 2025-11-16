@@ -23,6 +23,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { fmtVND } from '@/lib/payment';
 import { showSuccess, showError } from '@/lib/toast';
+import { formatVietnamDateTime } from '@/lib/timezone';
 import {
   apiCreateReview,
   apiUpdateReview,
@@ -631,7 +632,7 @@ export default function OrdersPageVipPlus() {
                       </span>
                     </div>
                     <div className="col-span-2 text-right text-[12px] text-slate-600">
-                      {new Date(r.orderDate).toLocaleString('vi-VN')}
+                      {formatVietnamDateTime(r.orderDate)}
                     </div>
                   </div>
 

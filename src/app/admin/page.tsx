@@ -26,6 +26,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { formatVietnamDate, formatVietnamTime } from '@/lib/timezone';
 
 import {
   PaymentRecord,
@@ -931,7 +932,7 @@ export default function AdminDashboardPage() {
                           Thời Gian
                         </div>
                         <div className="text-sm text-slate-700 font-medium">
-                          {new Date(p.createdAt).toLocaleString('vi-VN')}
+                          {formatVietnamDateTime(p.createdAt)}
                         </div>
                       </div>
                     </div>
@@ -1011,8 +1012,7 @@ export default function AdminDashboardPage() {
                             Thời Gian
                           </div>
                           <div className="mt-1 text-xs text-slate-600">
-                            {new Date(s.startDate).toLocaleDateString('vi-VN')} –{' '}
-                            {new Date(s.endDate).toLocaleDateString('vi-VN')}
+                            {formatVietnamDate(s.startDate)} – {formatVietnamDate(s.endDate)}
                           </div>
                         </div>
 
@@ -1102,17 +1102,10 @@ export default function AdminDashboardPage() {
                             Thời Gian
                           </div>
                           <div className="mt-1 text-xs text-slate-600">
-                            {new Date(t.departureTime).toLocaleDateString('vi-VN')}
+                            {formatVietnamDate(t.departureTime)}
                             <br />
-                            {new Date(t.departureTime).toLocaleTimeString('vi-VN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}{' '}
-                            –{' '}
-                            {new Date(t.arrivalTime).toLocaleTimeString('vi-VN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {formatVietnamTime(t.departureTime)} –{' '}
+                            {formatVietnamTime(t.arrivalTime)}
                           </div>
                         </div>
 
@@ -1402,9 +1395,7 @@ export default function AdminDashboardPage() {
                               Ngày Tạo
                             </div>
                             <div className="mt-1 text-sm text-slate-600">
-                              {row.createdAt
-                                ? new Date(row.createdAt).toLocaleDateString('vi-VN')
-                                : '—'}
+                              {row.createdAt ? formatVietnamDate(row.createdAt) : '—'}
                             </div>
                           </div>
                           {/* Time */}
@@ -1413,12 +1404,7 @@ export default function AdminDashboardPage() {
                               Giờ
                             </div>
                             <div className="mt-1 text-sm text-slate-600">
-                              {row.createdAt
-                                ? new Date(row.createdAt).toLocaleTimeString('vi-VN', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : '—'}
+                              {row.createdAt ? formatVietnamTime(row.createdAt) : '—'}
                             </div>
                           </div>
                         </div>

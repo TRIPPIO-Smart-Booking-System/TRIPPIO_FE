@@ -1,4 +1,5 @@
 import { getAuth } from './auth';
+import { formatVietnamDate, formatVietnamTime } from './timezone';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
 
@@ -175,7 +176,7 @@ export function buildTravelRecommendations(
   if (matchingShows.length > 0) {
     recommendations += '🎭 **Khu vui chơi & Sự kiện:**\n';
     matchingShows.slice(0, 3).forEach((s) => {
-      recommendations += `- **${s.name}** - ${s.location}, ${s.city}\n  📅 ${new Date(s.startDate).toLocaleDateString('vi-VN')} - ${new Date(s.endDate).toLocaleDateString('vi-VN')}\n  💵 Vé: ${s.price.toLocaleString('vi-VN')} VND\n`;
+      recommendations += `- **${s.name}** - ${s.location}, ${s.city}\n  📅 ${formatVietnamDate(s.startDate)} - ${formatVietnamDate(s.endDate)}\n  💵 Vé: ${s.price.toLocaleString('vi-VN')} VND\n`;
     });
     recommendations += '\n';
   }
@@ -190,7 +191,7 @@ export function buildTravelRecommendations(
   if (matchingTrips.length > 0) {
     recommendations += '✈️ **Chuyến di chuyển:**\n';
     matchingTrips.slice(0, 3).forEach((t) => {
-      recommendations += `- ${t.departureCity} → ${t.arrivalCity}\n  🕐 ${new Date(t.departureTime).toLocaleTimeString('vi-VN')} - ${new Date(t.arrivalTime).toLocaleTimeString('vi-VN')}\n  💵 ${t.price.toLocaleString('vi-VN')} VND\n`;
+      recommendations += `- ${t.departureCity} → ${t.arrivalCity}\n  🕐 ${formatVietnamTime(t.departureTime)} - ${formatVietnamTime(t.arrivalTime)}\n  💵 ${t.price.toLocaleString('vi-VN')} VND\n`;
     });
   }
 
