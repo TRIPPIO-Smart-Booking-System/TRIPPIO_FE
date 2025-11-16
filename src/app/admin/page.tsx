@@ -26,7 +26,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { formatVietnamDate, formatVietnamTime } from '@/lib/timezone';
+import { formatVietnamDate, formatVietnamTime, formatVietnamDateTime } from '@/lib/timezone';
 
 import {
   PaymentRecord,
