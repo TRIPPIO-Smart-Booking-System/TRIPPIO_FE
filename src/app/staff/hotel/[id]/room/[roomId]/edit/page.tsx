@@ -15,6 +15,15 @@ type ApiHotel = {
   city: string;
 };
 
+type ApiRoom = {
+  id: string;
+  hotelId: string;
+  roomType: string;
+  capacity: number;
+  pricePerNight: number;
+  availableRooms: number;
+};
+
 function authHeaders(): HeadersInit {
   const { accessToken } = getAuth();
   return {
@@ -23,13 +32,15 @@ function authHeaders(): HeadersInit {
   };
 }
 
-export default function CreateRoomPage() {
+export default function EditRoomPage() {
   const params = useParams();
   const router = useRouter();
   const hotelId = params.id as string;
+  const roomId = params.roomId as string;
 
   const [hotel, setHotel] = useState<ApiHotel | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -40,10 +51,10 @@ export default function CreateRoomPage() {
   });
 
   useEffect(() => {
-    if (hotelId) {
-      loadHotel();
+    if (hotelId && roomId) {
+      Promise.all([loadHotel(), loadRoom()]);
     }
-  }, [hotelId]);
+  }, [hotelId, roomId]);
 
   async function loadHotel() {
     try {
@@ -54,13 +65,37 @@ export default function CreateRoomPage() {
       const data = (await res.json()) as ApiHotel;
       setHotel(data);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Tải hotel thất bại');
+      const msg = e instanceof Error ? e.message : 'Tải hotel thất bại';
+      setErr(msg);
+      showError(`Lỗi: ${msg}`);
+    }
+  }
+
+  async function loadRoom() {
+    try {
+      const res = await fetch(`${API_BASE}/api/Room/${roomId}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as ApiRoom;
+      setForm({
+        roomType: data.roomType,
+        capacity: String(data.capacity),
+        pricePerNight: String(data.pricePerNight),
+        availableRooms: String(data.availableRooms),
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Tải phòng thất bại';
+      setErr(msg);
+      showError(`Lỗi: ${msg}`);
+    } finally {
+      setLoading(false);
     }
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setErr(null);
 
     const body = {
@@ -72,8 +107,8 @@ export default function CreateRoomPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/api/Room`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE}/api/Room/${roomId}`, {
+        method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify(body),
       });
@@ -83,17 +118,28 @@ export default function CreateRoomPage() {
         throw new Error(data.message || `HTTP ${res.status}`);
       }
 
-      showSuccess('Đã tạo phòng thành công');
+      showSuccess('Đã cập nhật phòng thành công');
       setTimeout(() => {
         router.push(`/staff/hotel/${hotelId}/room`);
       }, 500);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Tạo room thất bại';
+      const msg = e instanceof Error ? e.message : 'Sửa phòng thất bại';
       setErr(msg);
-      showError(`Lỗi tạo phòng: ${msg}`);
+      showError(`Lỗi sửa phòng: ${msg}`);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl p-6">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-r-transparent"></div>
+          <span>Đang tải...</span>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -107,13 +153,13 @@ export default function CreateRoomPage() {
           >
             <ArrowLeft className="h-5 w-5" /> Quay lại
           </Link>
-          <h1 className="text-3xl font-bold text-slate-900">Tạo Room Mới</h1>
+          <h1 className="text-3xl font-bold text-slate-900">✏️ Sửa Phòng</h1>
         </div>
 
         {/* Hotel Info */}
         {hotel && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-slate-600">Hotel được chọn:</p>
+            <p className="text-sm text-slate-600">Hotel:</p>
             <p className="text-lg font-semibold text-slate-900">
               {hotel.name} ({hotel.city})
             </p>
@@ -193,18 +239,19 @@ export default function CreateRoomPage() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={loading}
+              disabled={submitting}
               className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium rounded-lg inline-flex items-center justify-center gap-2"
             >
-              {loading && <Loader className="h-5 w-5 animate-spin" />}
-              {loading ? 'Đang tạo...' : 'Tạo Room'}
+              {submitting && <Loader className="h-5 w-5 animate-spin" />}
+              {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
-            <Link
-              href={`/staff/hotel/${hotelId}/room`}
+            <button
+              type="button"
+              onClick={() => router.back()}
               className="px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-900 font-medium rounded-lg"
             >
               Hủy
-            </Link>
+            </button>
           </div>
         </form>
       </div>

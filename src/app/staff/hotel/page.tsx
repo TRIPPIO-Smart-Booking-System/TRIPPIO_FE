@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getAuth } from '@/lib/auth';
-import { Plus, Search, Trash2, Loader, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Trash2, Loader, ArrowLeft, Edit } from 'lucide-react';
 import { showSuccess, showError, showWarning } from '@/lib/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
@@ -165,6 +165,12 @@ export default function HotelManagePage() {
                     <p className="text-xs text-emerald-600/70">Tạo: {fmtDate(hotel.dateCreated)}</p>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
+                    <Link
+                      href={`/staff/hotel/${hotel.id}/edit`}
+                      className="px-4 py-2 bg-blue-100 hover:bg-blue-200 border border-blue-300 text-blue-700 rounded-lg font-semibold text-sm inline-flex items-center gap-1 transition-colors"
+                    >
+                      <Edit className="h-4 w-4" /> Sửa
+                    </Link>
                     <Link
                       href={`/staff/hotel/${hotel.id}/room`}
                       className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 text-emerald-700 rounded-lg font-semibold text-sm transition-all whitespace-nowrap"

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { getAuth } from '@/lib/auth';
-import { Plus, ArrowLeft, Trash2, Loader } from 'lucide-react';
+import { Plus, ArrowLeft, Trash2, Loader, Edit } from 'lucide-react';
+import { showSuccess, showError } from '@/lib/toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:7142';
 
@@ -90,7 +91,7 @@ export default function HotelRoomsPage() {
   }, [hotelId]);
 
   async function onDelete(id: string) {
-    if (!confirm('Bạn chắc chắn muốn xóa?')) return;
+    if (!confirm('Bạn chắc chắn muốn xóa phòng này?')) return;
     try {
       const res = await fetch(`${API_BASE}/api/Room/${id}`, {
         method: 'DELETE',
@@ -98,8 +99,10 @@ export default function HotelRoomsPage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setRooms((prev) => prev.filter((r) => r.id !== id));
+      showSuccess('Đã xóa phòng thành công');
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Xóa thất bại');
+      const msg = e instanceof Error ? e.message : 'Xóa thất bại';
+      showError(`Lỗi xóa phòng: ${msg}`);
     }
   }
 
@@ -200,12 +203,20 @@ export default function HotelRoomsPage() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => onDelete(room.id)}
-                    className="px-4 py-2 bg-red-100 hover:bg-red-200 border border-red-300 text-red-700 rounded-lg font-semibold inline-flex items-center gap-2 transition-colors whitespace-nowrap"
-                  >
-                    <Trash2 className="h-4 w-4" /> Xóa
-                  </button>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/staff/hotel/${hotelId}/room/${room.id}/edit`}
+                      className="px-4 py-2 bg-blue-100 hover:bg-blue-200 border border-blue-300 text-blue-700 rounded-lg font-semibold text-sm inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                    >
+                      <Edit className="h-4 w-4" /> Sửa
+                    </Link>
+                    <button
+                      onClick={() => onDelete(room.id)}
+                      className="px-4 py-2 bg-red-100 hover:bg-red-200 border border-red-300 text-red-700 rounded-lg font-semibold inline-flex items-center gap-2 transition-colors whitespace-nowrap"
+                    >
+                      <Trash2 className="h-4 w-4" /> Xóa
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
