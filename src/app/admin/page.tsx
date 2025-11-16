@@ -205,9 +205,9 @@ function downloadCSV<T extends Record<string, unknown>>(filename: string, rows: 
 
 /* ---------- Page ---------- */
 export default function AdminDashboardPage() {
-  const [tab, setTab] = useState<'overview' | 'payments' | 'services' | 'reviews' | 'users'>(
-    'overview'
-  );
+  const [tab, setTab] = useState<
+    'overview' | 'payments' | 'services' | 'reviews' | 'users' | 'assign-roles'
+  >('overview');
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -730,6 +730,9 @@ export default function AdminDashboardPage() {
         </TabBtn>
         <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>
           Users
+        </TabBtn>
+        <TabBtn active={tab === 'assign-roles'} onClick={() => setTab('assign-roles')}>
+          Assign Roles
         </TabBtn>
       </div>
 
@@ -1621,6 +1624,151 @@ export default function AdminDashboardPage() {
                               Chỉnh sửa
                             </button>
                           </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+                <Users className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                <p className="text-slate-600">Không có người dùng nào</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'assign-roles' && (
+          <>
+            {/* Assign Roles Header */}
+            <div className="mb-6">
+              <div className="rounded-xl border border-slate-200 bg-white p-6">
+                <h2 className="text-xl font-bold text-slate-900 mb-2">Gán Quyền Cho Người Dùng</h2>
+                <p className="text-slate-600">Chọn người dùng và gán các quyền (roles) phù hợp</p>
+              </div>
+            </div>
+
+            {/* Search Users */}
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex flex-1 items-center rounded-xl border bg-white px-3">
+                <Search className="mr-2 h-4 w-4 text-slate-400" />
+                <input
+                  value={qUsers}
+                  onChange={(e) => setQUsers(e.target.value)}
+                  placeholder="Tìm theo tên, email, số điện thoại…"
+                  className="h-10 w-full outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Users List for Role Assignment */}
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-slate-600 bg-white rounded-2xl">
+                <RefreshCw className="h-5 w-5 animate-spin" /> Đang tải…
+              </div>
+            ) : users.length ? (
+              <div className="grid gap-4">
+                {users
+                  .filter((u) =>
+                    !qUsers
+                      ? true
+                      : u.fullName.toLowerCase().includes(qUsers.toLowerCase()) ||
+                        u.email.toLowerCase().includes(qUsers.toLowerCase()) ||
+                        u.phoneNumber.includes(qUsers)
+                  )
+                  .map((user) =>
+                    editingUserRole === user.id ? (
+                      // Role Edit Modal
+                      <div
+                        key={user.id}
+                        className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-5 shadow-lg"
+                      >
+                        <div className="mb-4">
+                          <div className="text-lg font-semibold text-slate-900">
+                            Gán quyền cho: <span className="text-emerald-600">{user.fullName}</span>
+                          </div>
+                          <div className="mt-1 text-sm text-slate-600">Email: {user.email}</div>
+                          <div className="text-sm text-slate-600">ĐT: {user.phoneNumber}</div>
+                        </div>
+
+                        <div className="mb-6 space-y-3 border-t pt-4">
+                          <div className="text-sm font-medium text-slate-700">Chọn quyền:</div>
+                          {['Customer', 'Staff', 'Admin'].map((role) => (
+                            <label
+                              key={role}
+                              className="flex items-center gap-3 text-sm cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={editingUserRoles.includes(role)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditingUserRoles([...editingUserRoles, role]);
+                                  } else {
+                                    setEditingUserRoles(editingUserRoles.filter((r) => r !== role));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded"
+                              />
+                              <span className="text-slate-700">{role}</span>
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button
+                            onClick={onSaveUserRole}
+                            disabled={savingRole}
+                            className="flex-1 rounded-lg bg-emerald-600 text-white px-4 py-2 font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                          >
+                            {savingRole ? 'Đang lưu…' : '✓ Lưu quyền'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingUserRole(null);
+                              setEditingUserRoles([]);
+                            }}
+                            className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium hover:bg-slate-50 transition-colors"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // User Card
+                      <div
+                        key={user.id}
+                        className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="font-semibold text-slate-900">{user.fullName}</div>
+                            <div className="text-sm text-slate-600">{user.email}</div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              ĐT: {user.phoneNumber}
+                            </div>
+                            <div className="mt-3 flex gap-1 flex-wrap">
+                              {user.roles && user.roles.length > 0 ? (
+                                user.roles.map((role) => (
+                                  <span
+                                    key={role}
+                                    className="inline-block bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-medium"
+                                  >
+                                    {role}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs text-slate-500 italic">Chưa có quyền</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => onEditUserRole(user.id, user.roles || [])}
+                            className="rounded-lg bg-sky-600 text-white px-4 py-2 text-sm font-medium hover:bg-sky-700 transition-colors whitespace-nowrap"
+                          >
+                            ✏️ Chỉnh sửa
+                          </button>
                         </div>
                       </div>
                     )

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { toast } from 'react-toastify';
+import { showSuccess, showError } from '@/lib/toast';
 import { getAuth } from '@/lib/auth';
 
 /* ================== Types & Const ================== */
@@ -286,12 +286,12 @@ export default function TransportManagePage() {
             : t
         )
       );
-      toast.success('✅ Cập nhật chuyến đi thành công!');
+      showSuccess('Cập nhật chuyến đi thành công!');
       closeEdit();
     } catch (e) {
       const msg = errMsg(e);
       setSaveErr(msg);
-      toast.error(`❌ ${msg}`);
+      showError(`Lỗi: ${msg}`);
     } finally {
       setSaving(false);
     }
